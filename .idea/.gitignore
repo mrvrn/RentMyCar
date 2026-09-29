@@ -9,6 +9,17 @@
 /dataSources/
 /dataSources.local.xml
 
+# Build output
+build/
+
+# IntelliJ
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Created by https://www.toptal.com/developers/gitignore/api/kotlin,intellij+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=kotlin,intellij+all
 
