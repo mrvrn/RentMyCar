@@ -10,7 +10,7 @@
 /dataSources.local.xml
 
 # Build output
-build/
+/build/
 
 # IntelliJ
 .idea/

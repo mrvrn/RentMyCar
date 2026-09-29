@@ -1,4 +1,4 @@
-package main.com.rentmycar
+package com.rentmycar
 
 import io.ktor.server.application.*
 import io.ktor.server.response.*

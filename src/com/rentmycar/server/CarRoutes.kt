@@ -1,4 +1,4 @@
-package main.com.rentmycar.server
+package com.rentmycar.server
 
 import io.ktor.server.routing.*
 

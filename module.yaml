@@ -6,7 +6,7 @@ settings:
         serialization:
             enabled: true
     jvm:
-        mainClass: main.com.rentmycar.ApplicationKt
+        mainClass: com.rentmycar.ApplicationKt
 
 dependencies:
     - $ktor.server.core
