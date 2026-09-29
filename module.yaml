@@ -2,14 +2,22 @@ product: jvm/app
 
 settings:
     ktor: enabled
+    kotlin:
+        serialization:
+            enabled: true
     jvm:
-        mainClass: org.jetbrains.amper.ktor.ApplicationKt
+        mainClass: main.com.rentmycar.ApplicationKt
 
 dependencies:
     - $ktor.server.core
     - $ktor.server.netty
     - $ktor.server.config.yaml
     - ch.qos.logback:logback-classic:1.5.38
+    - $ktor.server.contentNegotiation
+    - $ktor.serialization.kotlinx.json
+    - org.openfolder:kotlin-asyncapi-ktor:3.2.3
+    - com.jayway.jsonpath:json-path:2.9.0
 
 test-dependencies:
     - $ktor.server.testHost
+    - $ktor.client.contentNegotiation
