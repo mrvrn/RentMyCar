@@ -63,7 +63,7 @@ import org.jetbrains.exposed.v1.core.Table
 object Users : Table("users") {
     val id = long("id").autoIncrement()
     val name = varchar("name", 100)
-    val email = varchar("email", 100)
+    val email = varchar("email", 100).uniqueIndex()
     val phone = varchar("phone", 100)
     val address = varchar("address", 100)
     val bonusPoints = long("bonusPoints").nullable()
@@ -83,10 +83,11 @@ In `src/com/rentmycar/database/Tables.kt`, import the table object and add it to
 package com.rentmycar.database
 
 import com.rentmycar.domain.car.Cars
+import com.rentmycar.domain.location.Locations
 import com.rentmycar.domain.user.Users
 import org.jetbrains.exposed.v1.core.Table
 
-val applicationTables: Array<Table> = arrayOf(Cars, Users)
+val applicationTables: Array<Table> = arrayOf(Users, Locations, Cars)
 ```
 
 Keep existing tables registered. For each new table, first create its definition in its domain package, then import and add the object to this array. A new table that is not registered is not included in generation.

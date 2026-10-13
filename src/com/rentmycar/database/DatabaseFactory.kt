@@ -10,8 +10,8 @@ data class DatabaseSettings(val url: String, val user: String, val password: Str
     companion object {
         fun from(config: ApplicationConfig): DatabaseSettings = DatabaseSettings(
             url = appEnvironment["DATABASE_URL"] ?: localDatabaseUrl(config),
-            user = config.property("database.user").getString(),
-            password = config.property("database.password").getString(),
+            user = appEnvironment["MYSQL_USER"] ?: config.property("database.user").getString(),
+            password = appEnvironment["MYSQL_PASSWORD"] ?: config.property("database.password").getString(),
         )
 
         private fun localDatabaseUrl(config: ApplicationConfig): String {
