@@ -19,6 +19,15 @@ For every separate schema change:
 
 ## 1. Start Docker and configure your environment
 
+### Passwords on a fresh database
+
+The password migration is intended for initial database setup, before any users
+exist, and adds `password VARCHAR(100) NOT NULL` directly. Registration must hash
+the supplied password before storing it; the migration cannot hash passwords
+that have not been supplied. Authentication and hashing are not implemented yet.
+If this migration is later used to upgrade a populated database, it will need a
+staged backfill or explicit password setup state before enforcing `NOT NULL`.
+
 Install and start Docker Desktop with Linux containers enabled. On first setup:
 
 ```powershell
