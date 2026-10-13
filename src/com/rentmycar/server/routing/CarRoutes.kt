@@ -10,6 +10,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import com.rentmycar.domain.car.AddCarRequest
+import com.rentmycar.domain.car.CarResponse
+import com.rentmycar.domain.car.CarService
+import io.ktor.http.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Route.carRoutes(repository: ICarRepository) {
