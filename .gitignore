@@ -12,6 +12,9 @@
 # Build output
 /build/
 
+# Local Docker configuration
+/.env
+
 # IntelliJ
 .idea/
 *.iml

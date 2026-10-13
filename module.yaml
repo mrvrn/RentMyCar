@@ -17,7 +17,22 @@ dependencies:
     - $ktor.serialization.kotlinx.json
     - org.openfolder:kotlin-asyncapi-ktor:3.2.3
     - com.jayway.jsonpath:json-path:2.9.0
+    - io.github.cdimascio:dotenv-kotlin:6.5.1
+
+    # Exposed
+    - org.jetbrains.exposed:exposed-core:1.0.0
+    - org.jetbrains.exposed:exposed-jdbc:1.0.0
+    - org.jetbrains.exposed:exposed-migration-jdbc:1.0.0
+    - org.jetbrains.exposed:exposed-json:1.0.0
+
+    # MySQL
+    - com.mysql:mysql-connector-j:9.5.0
+
+    # Flyway
+    - org.flywaydb:flyway-core:11.0.0
+    - org.flywaydb:flyway-mysql:11.0.0
 
 test-dependencies:
+    - org.testcontainers:testcontainers-mysql:2.0.5
     - $ktor.server.testHost
     - $ktor.client.contentNegotiation
