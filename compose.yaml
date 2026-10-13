@@ -22,6 +22,7 @@ services:
         environment:
             PMA_HOST: db
             PMA_PORT: 3306
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev}
         ports:
             - "127.0.0.1:${PHPMYADMIN_PORT:-8081}:80"
         depends_on:
