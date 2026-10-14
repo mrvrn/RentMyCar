@@ -11,12 +11,16 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import com.rentmycar.domain.car.AddCarRequest
-import com.rentmycar.domain.car.CarResponse
 import com.rentmycar.domain.car.CarService
+import com.rentmycar.domain.car.CarResponse
 import io.ktor.http.*
+import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import org.slf4j.LoggerFactory
+
+val carRoutesLogger = LoggerFactory.getLogger("CarRoutes")
 
 fun Route.carRoutes(repository: ICarRepository) {
     route("/cars") {
