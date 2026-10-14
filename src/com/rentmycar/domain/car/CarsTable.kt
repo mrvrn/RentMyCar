@@ -13,7 +13,7 @@ object Cars : Table("cars") {
     val ownerId = reference("ownerId", Users.id, onDelete = ReferenceOption.CASCADE)
     val brand  = varchar("brand", 255)
     val type = varchar("type", 255)
-    val licensePlate = varchar("licensePlate", 255)
+    val licensePlate = varchar("licensePlate", 255).uniqueIndex("idx_unique_license_plate")
     val pricePerDay = decimal("pricePerDay", 10, 2)
     val pickupId = reference("pickupId", Locations.id)
     val dropOffId = reference("dropOffId", Locations.id)

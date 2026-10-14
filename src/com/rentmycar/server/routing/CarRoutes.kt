@@ -10,6 +10,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
+import java.sql.SQLIntegrityConstraintViolationException
 
 val carRoutesLogger = LoggerFactory.getLogger("CarRoutes")
 
@@ -44,6 +45,9 @@ fun Route.carRoutes() {
             } catch (e: IllegalArgumentException) {
                 carRoutesLogger.error("Validation error: ${e.message}")
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+            } catch (e: SQLIntegrityConstraintViolationException) {
+                carRoutesLogger.warn("Duplicate license plate: ${e.message}")
+                call.respond(HttpStatusCode.Conflict, mapOf("error" to "Dit kenteken is al in gebruik"))
             } catch (e: Exception) {
                 carRoutesLogger.error("Internal server error: ${e.message}", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Er is een fout opgetreden bij het toevoegen van de auto"))
@@ -87,6 +91,9 @@ fun Route.carRoutes() {
                 } else {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
                 }
+            } catch (e: SQLIntegrityConstraintViolationException) {
+                carRoutesLogger.warn("Duplicate license plate: ${e.message}")
+                call.respond(HttpStatusCode.Conflict, mapOf("error" to "Dit kenteken is al in gebruik"))
             } catch (e: Exception) {
                 carRoutesLogger.error("Internal server error: ${e.message}", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Er is een fout opgetreden bij het updaten van de auto"))
