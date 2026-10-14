@@ -38,6 +38,9 @@ fun Route.carRoutes() {
                 val createdCar = CarService.addCar(request, ownerId)
                 carRoutesLogger.info("Car created successfully: $createdCar")
                 call.respond(HttpStatusCode.Created, createdCar)
+            } catch (e: io.ktor.server.plugins.ContentTransformationException) {
+                carRoutesLogger.error("Malformed JSON: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
             } catch (e: IllegalArgumentException) {
                 carRoutesLogger.error("Validation error: ${e.message}")
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
@@ -74,6 +77,9 @@ fun Route.carRoutes() {
                 carRoutesLogger.info("Received PUT /cars/$id request with body: $request")
                 val updatedCar = CarService.updateCar(id, request)
                 call.respond(HttpStatusCode.OK, updatedCar)
+            } catch (e: io.ktor.server.plugins.ContentTransformationException) {
+                carRoutesLogger.error("Malformed JSON: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
             } catch (e: IllegalArgumentException) {
                 carRoutesLogger.error("Validation error: ${e.message}")
                 if (e.message?.contains("bestaat niet") == true) {
