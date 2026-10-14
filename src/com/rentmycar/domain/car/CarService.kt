@@ -1,7 +1,7 @@
 package com.rentmycar.domain.car
 
-import com.rentmycar.appEnvironment
 import com.rentmycar.database.DatabaseSettings
+import com.rentmycar.database.currentDatabaseSettings
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -16,12 +16,8 @@ object CarService {
     fun addCar(request: AddCarRequest, ownerId: Long): CarResponse {
         logger.info("Adding car for ownerId: $ownerId, brand: ${request.brand}, licensePlate: ${request.licensePlate}")
         
-        // Database configuratie uit environment variabelen of defaults
-        val settings = DatabaseSettings(
-            url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
-            user = appEnvironment["MYSQL_USER"] ?: "root",
-            password = appEnvironment["MYSQL_PASSWORD"] ?: "root"
-        )
+        // Gebruik globale database settings van DatabaseFactory
+        val settings = currentDatabaseSettings ?: throw IllegalStateException("Database niet geconfigureerd")
         
         logger.info("Connecting to database: ${settings.url}")
         
@@ -62,27 +58,10 @@ object CarService {
                 }
                 
                 if (!dropoffExists) {
-                    logger.error("Dropoff location with ID ${request.dropoffLocationId} does not exist")
+                    logger.error("Dropoff location with ID ${request.dropOffLocationId} does not exist")
                     throw IllegalArgumentException("Inleverlocatie met ID ${request.dropOffLocationId} bestaat niet")
                 }
-                // Inleverlocatie bestaat, ga verder met validatie
-                
-                // Valideer dat kenteken uniek is (geen duplicaten)
-                logger.info("Checking license plate uniqueness: ${request.licensePlate}")
-                val licensePlateExists = connection.prepareStatement(
-                    "SELECT COUNT(*) FROM cars WHERE licensePlate = ?"
-                ).use { stmt ->
-                    stmt.setString(1, request.licensePlate)
-                    stmt.executeQuery().use { rs ->
-                        rs.next() && rs.getLong(1) > 0
-                    }
-                }
-                
-                if (licensePlateExists) {
-                    logger.error("Car with license plate ${request.licensePlate} already exists")
-                    throw IllegalArgumentException("Er bestaat al een auto met kenteken ${request.licensePlate}")
-                }
-                // Kenteken is uniek, ga verder met invoegen
+                // Inleverlocatie bestaat, ga verder met invoegen
                 
                 // Voeg nieuwe auto toe in database
                 logger.info("Inserting car into database")
@@ -170,12 +149,8 @@ object CarService {
     fun getAllCars(): List<CarResponse> {
         logger.info("Fetching all cars")
         
-        // Database configuratie
-        val settings = DatabaseSettings(
-            url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
-            user = appEnvironment["MYSQL_USER"] ?: "root",
-            password = appEnvironment["MYSQL_PASSWORD"] ?: "root"
-        )
+        // Gebruik globale database settings van DatabaseFactory
+        val settings = currentDatabaseSettings ?: throw IllegalStateException("Database niet geconfigureerd")
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             // Haal alle autos op uit database
@@ -219,12 +194,8 @@ object CarService {
     fun getCarById(id: Long): CarResponse {
         logger.info("Fetching car with ID: $id")
         
-        // Database configuratie
-        val settings = DatabaseSettings(
-            url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
-            user = appEnvironment["MYSQL_USER"] ?: "root",
-            password = appEnvironment["MYSQL_PASSWORD"] ?: "root"
-        )
+        // Gebruik globale database settings van DatabaseFactory
+        val settings = currentDatabaseSettings ?: throw IllegalStateException("Database niet geconfigureerd")
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             // Haal specifieke auto op op basis van ID
@@ -267,12 +238,8 @@ object CarService {
     fun updateCar(id: Long, request: UpdateCarRequest): CarResponse {
         logger.info("Updating car with ID: $id")
         
-        // Database configuratie
-        val settings = DatabaseSettings(
-            url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
-            user = appEnvironment["MYSQL_USER"] ?: "root",
-            password = appEnvironment["MYSQL_PASSWORD"] ?: "root"
-        )
+        // Gebruik globale database settings van DatabaseFactory
+        val settings = currentDatabaseSettings ?: throw IllegalStateException("Database niet geconfigureerd")
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             // Auto-commit uit voor transactionele integriteit
@@ -362,12 +329,8 @@ object CarService {
     fun deleteCar(id: Long) {
         logger.info("Deleting car with ID: $id")
         
-        // Database configuratie
-        val settings = DatabaseSettings(
-            url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
-            user = appEnvironment["MYSQL_USER"] ?: "root",
-            password = appEnvironment["MYSQL_PASSWORD"] ?: "root"
-        )
+        // Gebruik globale database settings van DatabaseFactory
+        val settings = currentDatabaseSettings ?: throw IllegalStateException("Database niet geconfigureerd")
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             // Verwijder auto uit database
