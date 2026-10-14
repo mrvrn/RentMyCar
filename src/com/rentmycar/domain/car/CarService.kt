@@ -16,6 +16,7 @@ object CarService {
     fun addCar(request: AddCarRequest, ownerId: Long): CarResponse {
         logger.info("Adding car for ownerId: $ownerId, brand: ${request.brand}, licensePlate: ${request.licensePlate}")
         
+        // Database configuratie uit environment variabelen of defaults
         val settings = DatabaseSettings(
             url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
             user = appEnvironment["MYSQL_USER"] ?: "root",
@@ -24,12 +25,15 @@ object CarService {
         
         logger.info("Connecting to database: ${settings.url}")
         
+        // Encode pictures lijst naar JSON voor opslag in database
         val picturesJson = request.pictures?.let { json.encodeToString(it) }
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            // Auto-commit uit voor transactionele integriteit
             connection.autoCommit = false
             
             try {
+                // Valideer dat ophaallocatie bestaat in database
                 logger.info("Checking pickup location ID: ${request.pickupLocationId}")
                 val pickupExists = connection.prepareStatement(
                     "SELECT COUNT(*) FROM locations WHERE id = ?"
@@ -44,7 +48,9 @@ object CarService {
                     logger.error("Pickup location with ID ${request.pickupLocationId} does not exist")
                     throw IllegalArgumentException("Ophaallocatie met ID ${request.pickupLocationId} bestaat niet")
                 }
+                // Ophaallocatie bestaat, ga verder met validatie
                 
+                // Valideer dat inleverlocatie bestaat in database
                 logger.info("Checking dropoff location ID: ${request.dropOffLocationId}")
                 val dropoffExists = connection.prepareStatement(
                     "SELECT COUNT(*) FROM locations WHERE id = ?"
@@ -56,10 +62,12 @@ object CarService {
                 }
                 
                 if (!dropoffExists) {
-                    logger.error("Dropoff location with ID ${request.dropOffLocationId} does not exist")
+                    logger.error("Dropoff location with ID ${request.dropoffLocationId} does not exist")
                     throw IllegalArgumentException("Inleverlocatie met ID ${request.dropOffLocationId} bestaat niet")
                 }
+                // Inleverlocatie bestaat, ga verder met validatie
                 
+                // Valideer dat kenteken uniek is (geen duplicaten)
                 logger.info("Checking license plate uniqueness: ${request.licensePlate}")
                 val licensePlateExists = connection.prepareStatement(
                     "SELECT COUNT(*) FROM cars WHERE licensePlate = ?"
@@ -74,13 +82,16 @@ object CarService {
                     logger.error("Car with license plate ${request.licensePlate} already exists")
                     throw IllegalArgumentException("Er bestaat al een auto met kenteken ${request.licensePlate}")
                 }
+                // Kenteken is uniek, ga verder met invoegen
                 
+                // Voeg nieuwe auto toe in database
                 logger.info("Inserting car into database")
                 val carId = connection.prepareStatement(
                     """INSERT INTO cars (ownerId, brand, type, licensePlate, pricePerDay, pickupId, dropOffId, pictures, isAvailable)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     java.sql.Statement.RETURN_GENERATED_KEYS
                 ).use { stmt ->
+                    // Bind parameters aan prepared statement
                     stmt.setLong(1, ownerId)
                     stmt.setString(2, request.brand)
                     stmt.setString(3, request.type)
@@ -92,6 +103,7 @@ object CarService {
                     stmt.setBoolean(9, request.isAvailable)
                     stmt.executeUpdate()
                     
+                    // Haal gegenereerde ID op van de nieuwe auto
                     stmt.generatedKeys.use { rs ->
                         if (rs.next()) rs.getLong(1) else throw IllegalStateException("Failed to get generated ID")
                     }
@@ -99,6 +111,7 @@ object CarService {
                 
                 logger.info("Car inserted with ID: $carId")
                 
+                // Haal de aangemaakte auto op om complete data terug te geven
                 val carData = connection.prepareStatement(
                     "SELECT * FROM cars WHERE id = ?"
                 ).use { stmt ->
@@ -123,13 +136,16 @@ object CarService {
                     }
                 }
                 
+                // Commit transaction om wijzigingen permanent te maken
                 connection.commit()
                 logger.info("Transaction committed successfully")
                 
+                // Decodeer JSON terug naar lijst van strings voor pictures
                 val picturesList = (carData["pictures"] as? String)?.let { 
                     if (it.isNotBlank()) json.decodeFromString<List<String>>(it) else null
                 }
                 
+                // Map database data naar response DTO
                 return CarResponse(
                     id = carData["id"] as Long,
                     ownerId = carData["ownerId"] as Long,
@@ -143,6 +159,7 @@ object CarService {
                     isAvailable = carData["isAvailable"] as Boolean
                 )
             } catch (e: Exception) {
+                // Rollback transaction bij fout om data consistentie te behouden
                 logger.error("Error adding car: ${e.message}", e)
                 connection.rollback()
                 throw e
@@ -153,6 +170,7 @@ object CarService {
     fun getAllCars(): List<CarResponse> {
         logger.info("Fetching all cars")
         
+        // Database configuratie
         val settings = DatabaseSettings(
             url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
             user = appEnvironment["MYSQL_USER"] ?: "root",
@@ -160,17 +178,20 @@ object CarService {
         )
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            // Haal alle autos op uit database
             val cars = connection.prepareStatement(
                 "SELECT * FROM cars"
             ).use { stmt ->
                 stmt.executeQuery().use { rs ->
                     val result = mutableListOf<CarResponse>()
                     while (rs.next()) {
+                        // Decodeer JSON pictures terug naar lijst
                         val picturesJson = rs.getString("pictures")
                         val picturesList = picturesJson?.let { 
                             if (it.isNotBlank()) json.decodeFromString<List<String>>(it) else null
                         }
                         
+                        // Map database rij naar CarResponse DTO
                         result.add(
                             CarResponse(
                                 id = rs.getLong("id"),
@@ -198,6 +219,7 @@ object CarService {
     fun getCarById(id: Long): CarResponse {
         logger.info("Fetching car with ID: $id")
         
+        // Database configuratie
         val settings = DatabaseSettings(
             url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
             user = appEnvironment["MYSQL_USER"] ?: "root",
@@ -205,17 +227,20 @@ object CarService {
         )
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            // Haal specifieke auto op op basis van ID
             val car = connection.prepareStatement(
                 "SELECT * FROM cars WHERE id = ?"
             ).use { stmt ->
                 stmt.setLong(1, id)
                 stmt.executeQuery().use { rs ->
                     if (rs.next()) {
+                        // Decodeer JSON pictures terug naar lijst
                         val picturesJson = rs.getString("pictures")
                         val picturesList = picturesJson?.let { 
                             if (it.isNotBlank()) json.decodeFromString<List<String>>(it) else null
                         }
                         
+                        // Map database rij naar CarResponse DTO
                         CarResponse(
                             id = rs.getLong("id"),
                             ownerId = rs.getLong("ownerId"),
@@ -229,6 +254,7 @@ object CarService {
                             isAvailable = rs.getBoolean("isAvailable")
                         )
                     } else {
+                        // Auto niet gevonden, gooi exception
                         throw IllegalArgumentException("Auto met ID $id bestaat niet")
                     }
                 }
@@ -241,6 +267,7 @@ object CarService {
     fun updateCar(id: Long, request: UpdateCarRequest): CarResponse {
         logger.info("Updating car with ID: $id")
         
+        // Database configuratie
         val settings = DatabaseSettings(
             url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
             user = appEnvironment["MYSQL_USER"] ?: "root",
@@ -248,14 +275,18 @@ object CarService {
         )
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            // Auto-commit uit voor transactionele integriteit
             connection.autoCommit = false
             
             try {
+                // Haal bestaande auto op om te controleren dat hij bestaat
                 val existingCar = getCarById(id)
                 
+                // Bouw lijst van velden die geupdate moeten worden
                 val updates = mutableListOf<String>()
                 val values = mutableListOf<Any>()
                 
+                // Voeg alleen niet-null velden toe aan update lijst (partial update)
                 request.brand?.let {
                     updates.add("brand = ?")
                     values.add(it)
@@ -293,12 +324,13 @@ object CarService {
                     logger.info("No fields to update")
                     return existingCar
                 }
-                
+                // Bouw dynamische SQL update statement met alleen gegeven velden
                 values.add(id)
                 val sql = "UPDATE cars SET ${updates.joinToString(", ")} WHERE id = ?"
                 
                 logger.info("Executing update: $sql")
                 connection.prepareStatement(sql).use { stmt ->
+                    // Bind parameters met correcte types
                     values.forEachIndexed { index, value ->
                         when (value) {
                             is Long -> stmt.setLong(index + 1, value)
@@ -312,11 +344,14 @@ object CarService {
                     stmt.executeUpdate()
                 }
                 
+                // Commit transaction om wijzigingen permanent te maken
                 connection.commit()
                 logger.info("Car updated successfully")
                 
+                // Haal geupdate auto op en return
                 return getCarById(id)
             } catch (e: Exception) {
+                // Rollback transaction bij fout om data consistentie te behouden
                 logger.error("Error updating car: ${e.message}", e)
                 connection.rollback()
                 throw e
@@ -327,6 +362,7 @@ object CarService {
     fun deleteCar(id: Long) {
         logger.info("Deleting car with ID: $id")
         
+        // Database configuratie
         val settings = DatabaseSettings(
             url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
             user = appEnvironment["MYSQL_USER"] ?: "root",
@@ -334,6 +370,7 @@ object CarService {
         )
         
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            // Verwijder auto uit database
             val rowsAffected = connection.prepareStatement(
                 "DELETE FROM cars WHERE id = ?"
             ).use { stmt ->
@@ -341,10 +378,10 @@ object CarService {
                 stmt.executeUpdate()
             }
             
+            // Check of auto daadwerkelijk verwijderd is
             if (rowsAffected == 0) {
                 throw IllegalArgumentException("Auto met ID $id bestaat niet")
             }
-            
             logger.info("Car deleted successfully")
         }
     }
