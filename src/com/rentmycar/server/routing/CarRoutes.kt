@@ -17,12 +17,24 @@ val carRoutesLogger = LoggerFactory.getLogger("CarRoutes")
 
 fun Route.carRoutes(repository: ICarRepository) {
     route("/cars") {
+        get {
+            try {
+                carRoutesLogger.info("Received GET /cars request")
+                val cars = CarService.getAllCars()
+                carRoutesLogger.info("Fetched ${cars.size} cars")
+                call.respond(HttpStatusCode.OK, cars)
+            } catch (e: Exception) {
+                carRoutesLogger.error("Internal server error: ${e.message}", e)
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Er is een fout opgetreden bij het ophalen van de autos"))
+            }
+        }
+        
         post {
             try {
                 carRoutesLogger.info("Received POST /cars request")
                 val request = call.receive<AddCarRequest>()
                 carRoutesLogger.info("Request body: $request")
-                val ownerId = 5L
+                val ownerId = 1L
                 carRoutesLogger.info("Using hardcoded ownerId: $ownerId")
                 val createdCar = CarService.addCar(request, ownerId)
                 carRoutesLogger.info("Car created successfully: $createdCar")

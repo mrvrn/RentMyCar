@@ -99,39 +99,99 @@ object CarService {
                 
                 logger.info("Car inserted with ID: $carId")
                 
-                val car = connection.prepareStatement(
+                val carData = connection.prepareStatement(
                     "SELECT * FROM cars WHERE id = ?"
                 ).use { stmt ->
                     stmt.setLong(1, carId)
                     stmt.executeQuery().use { rs ->
-                        if (rs.next()) rs else throw IllegalStateException("Failed to fetch created car")
+                        if (rs.next()) {
+                            mapOf(
+                                "id" to rs.getLong("id"),
+                                "ownerId" to rs.getLong("ownerId"),
+                                "brand" to rs.getString("brand"),
+                                "type" to rs.getString("type"),
+                                "licensePlate" to rs.getString("licensePlate"),
+                                "pricePerDay" to rs.getBigDecimal("pricePerDay").toDouble(),
+                                "pickupId" to rs.getLong("pickupId"),
+                                "dropOffId" to rs.getLong("dropOffId"),
+                                "pictures" to rs.getString("pictures"),
+                                "isAvailable" to rs.getBoolean("isAvailable")
+                            )
+                        } else {
+                            throw IllegalStateException("Failed to fetch created car")
+                        }
                     }
                 }
                 
                 connection.commit()
                 logger.info("Transaction committed successfully")
                 
-                val picturesList = car.getString("pictures")?.let { 
+                val picturesList = (carData["pictures"] as? String)?.let { 
                     if (it.isNotBlank()) json.decodeFromString<List<String>>(it) else null
                 }
                 
                 return CarResponse(
-                    id = car.getLong("id"),
-                    ownerId = car.getLong("ownerId"),
-                    brand = car.getString("brand"),
-                    type = car.getString("type"),
-                    licensePlate = car.getString("licensePlate"),
-                    pricePerDay = car.getBigDecimal("pricePerDay").toDouble(),
-                    pickupLocationId = car.getLong("pickupId"),
-                    dropOffLocationId = car.getLong("dropOffId"),
+                    id = carData["id"] as Long,
+                    ownerId = carData["ownerId"] as Long,
+                    brand = carData["brand"] as String,
+                    type = carData["type"] as String,
+                    licensePlate = carData["licensePlate"] as String,
+                    pricePerDay = carData["pricePerDay"] as Double,
+                    pickupLocationId = carData["pickupId"] as Long,
+                    dropOffLocationId = carData["dropOffId"] as Long,
                     pictures = picturesList,
-                    isAvailable = car.getBoolean("isAvailable")
+                    isAvailable = carData["isAvailable"] as Boolean
                 )
             } catch (e: Exception) {
                 logger.error("Error adding car: ${e.message}", e)
                 connection.rollback()
                 throw e
             }
+        }
+    }
+    
+    fun getAllCars(): List<CarResponse> {
+        logger.info("Fetching all cars")
+        
+        val settings = DatabaseSettings(
+            url = appEnvironment["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3307/rentmycar",
+            user = appEnvironment["MYSQL_USER"] ?: "root",
+            password = appEnvironment["MYSQL_PASSWORD"] ?: "root"
+        )
+        
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            val cars = connection.prepareStatement(
+                "SELECT * FROM cars"
+            ).use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    val result = mutableListOf<CarResponse>()
+                    while (rs.next()) {
+                        val picturesJson = rs.getString("pictures")
+                        val picturesList = picturesJson?.let { 
+                            if (it.isNotBlank()) json.decodeFromString<List<String>>(it) else null
+                        }
+                        
+                        result.add(
+                            CarResponse(
+                                id = rs.getLong("id"),
+                                ownerId = rs.getLong("ownerId"),
+                                brand = rs.getString("brand"),
+                                type = rs.getString("type"),
+                                licensePlate = rs.getString("licensePlate"),
+                                pricePerDay = rs.getBigDecimal("pricePerDay").toDouble(),
+                                pickupLocationId = rs.getLong("pickupId"),
+                                dropOffLocationId = rs.getLong("dropOffId"),
+                                pictures = picturesList,
+                                isAvailable = rs.getBoolean("isAvailable")
+                            )
+                        )
+                    }
+                    result
+                }
+            }
+            
+            logger.info("Fetched ${cars.size} cars")
+            return cars
         }
     }
 }
