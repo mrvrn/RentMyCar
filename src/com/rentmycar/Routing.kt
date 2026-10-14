@@ -1,13 +1,14 @@
 package com.rentmycar
 
+import com.rentmycar.domain.user.UserRepository
+import com.rentmycar.server.routing.carRoutes
+import com.rentmycar.server.routing.userRoutes
 import io.ktor.server.application.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     routing {
-        get("/") {
-            call.respondText("Hello World!")
-        }
+        carRoutes()
+        userRoutes(UserRepository())
     }
 }
