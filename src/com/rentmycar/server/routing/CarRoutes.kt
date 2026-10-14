@@ -13,6 +13,7 @@ import io.ktor.server.response.respond
 import com.rentmycar.domain.car.AddCarRequest
 import com.rentmycar.domain.car.CarService
 import com.rentmycar.domain.car.CarResponse
+import com.rentmycar.domain.car.UpdateCarRequest
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -104,6 +105,52 @@ fun Route.carRoutes(repository: ICarRepository) {
             }
 
             call.respond(car)
+        }
+        
+        get("/{id}") {
+            try {
+                val id = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException("Ongeldig car ID")
+                carRoutesLogger.info("Received GET /cars/$id request")
+                val car = CarService.getCarById(id)
+                call.respond(HttpStatusCode.OK, car)
+            } catch (e: IllegalArgumentException) {
+                carRoutesLogger.error("Validation error: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+            } catch (e: Exception) {
+                carRoutesLogger.error("Internal server error: ${e.message}", e)
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Er is een fout opgetreden bij het ophalen van de auto"))
+            }
+        }
+        
+        put("/{id}") {
+            try {
+                val id = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException("Ongeldig car ID")
+                val request = call.receive<UpdateCarRequest>()
+                carRoutesLogger.info("Received PUT /cars/$id request with body: $request")
+                val updatedCar = CarService.updateCar(id, request)
+                call.respond(HttpStatusCode.OK, updatedCar)
+            } catch (e: IllegalArgumentException) {
+                carRoutesLogger.error("Validation error: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+            } catch (e: Exception) {
+                carRoutesLogger.error("Internal server error: ${e.message}", e)
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Er is een fout opgetreden bij het updaten van de auto"))
+            }
+        }
+        
+        delete("/{id}") {
+            try {
+                val id = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException("Ongeldig car ID")
+                carRoutesLogger.info("Received DELETE /cars/$id request")
+                CarService.deleteCar(id)
+                call.respond(HttpStatusCode.NoContent)
+            } catch (e: IllegalArgumentException) {
+                carRoutesLogger.error("Validation error: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+            } catch (e: Exception) {
+                carRoutesLogger.error("Internal server error: ${e.message}", e)
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Er is een fout opgetreden bij het verwijderen van de auto"))
+            }
         }
     }
 }
