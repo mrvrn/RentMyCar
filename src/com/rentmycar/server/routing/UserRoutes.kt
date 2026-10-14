@@ -25,4 +25,22 @@ fun Route.userRoutes(repository: UserRepository) {
             call.respond(user)
         }
     }
+
+    route("/register") {
+        post {
+            // TODO
+        }
+    }
+
+    route("/login") {
+        post {
+            // TODO
+        }
+    }
+
+    route("/logout") {
+        post {
+            // TODO
+        }
+    }
 }
