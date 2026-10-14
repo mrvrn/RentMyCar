@@ -15,6 +15,18 @@ data class AddCarRequest(
 )
 
 @Serializable
+data class UpdateCarRequest(
+    val brand: String? = null,
+    val type: String? = null,
+    val licensePlate: String? = null,
+    val pricePerDay: Double? = null,
+    val pickupLocationId: Long? = null,
+    val dropOffLocationId: Long? = null,
+    val pictures: List<String>? = null,
+    val isAvailable: Boolean? = null
+)
+
+@Serializable
 data class CarResponse(
     val id: Long,
     val ownerId: Long,
