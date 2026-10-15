@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import com.rentmycar.database.configureDatabase
+import com.rentmycar.server.auth.configureSecurity
 import io.github.cdimascio.dotenv.dotenv
 import com.rentmycar.server.auth.configureSecurity
 
@@ -22,6 +23,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     configureDatabase()
+    configureSecurity()
 
     install(ContentNegotiation) {
         json()
