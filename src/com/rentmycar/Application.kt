@@ -3,10 +3,9 @@ package com.rentmycar
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.netty.EngineMain
-import io.ktor.server.routing.routing
-import com.rentmycar.server.routing.carRoutes
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import com.rentmycar.database.configureDatabase
+import com.rentmycar.server.auth.configureSecurity
 import io.github.cdimascio.dotenv.dotenv
 
 val appEnvironment = dotenv {
@@ -23,14 +22,11 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     configureDatabase()
+    configureSecurity()
 
     install(ContentNegotiation) {
         json()
     }
 
     configureRouting()
-    
-    routing {
-        carRoutes()
-    }
 }
