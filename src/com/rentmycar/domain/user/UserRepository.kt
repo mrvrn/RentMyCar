@@ -16,13 +16,15 @@ class UserRepository : IUserRepository, BaseRepository<User, UserDto>(User) {
 
     override suspend fun create(user: CreateUserDto) {
         try {
+            val userPassword = hashPassword(user.password)
+
             withTransaction {
                 User.new {
                     name = user.name
                     email = user.email
                     phone = user.phone
                     address = user.address
-                    password = hashPassword(user.password)
+                    password = userPassword
                 }
             }
         } catch (exception: SQLException) {

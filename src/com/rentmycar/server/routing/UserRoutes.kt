@@ -9,6 +9,8 @@ import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.LoginUserDto
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.response.respond
@@ -29,6 +31,17 @@ fun Route.userRoutes(repository: IUserRepository) {
 
                 if (id == null) {
                     call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
+                    return@get
+                }
+
+                val principal = call.principal<JWTPrincipal>()
+                val authenticatedUserId = principal
+                    ?.payload
+                    ?.getClaim("userId")
+                    ?.asLong()
+
+                if (authenticatedUserId != id) {
+                    call.respond(HttpStatusCode.Forbidden, "Access denied")
                     return@get
                 }
 
