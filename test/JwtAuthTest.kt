@@ -151,6 +151,22 @@ class JwtAuthTest {
     }
 
     @Test
+    fun validTokenCannotAccessAnotherUser() = jwtTest {
+        val otherEmail = "other-jwt@example.com"
+        repository.create(
+            CreateUserDto("Other User", otherEmail, "0612345678", "Other Street 2", PASSWORD)
+        )
+        val otherUserId = repository.findAll().single { it.email == otherEmail }.id
+
+        val response = client.get("/users/$otherUserId") {
+            bearerAuth(token())
+        }
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        assertEquals("Access denied", response.bodyAsText())
+    }
+
+    @Test
     fun missingTokenIsRejectedWithChallengeMessage() = jwtTest {
         val response = client.getUser()
         assertEquals(HttpStatusCode.Unauthorized, response.status)
