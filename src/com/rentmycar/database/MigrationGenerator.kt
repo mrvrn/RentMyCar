@@ -28,7 +28,8 @@ fun main(args: Array<String>) {
     // Load environment overrides before resolving the database connection settings.
     loadEnvironment()
 
-    val config = requireNotNull(YamlConfig("application.yaml")) { "Missing application.yaml" }
+    // Migration generation only needs database settings, not the server's JWT secret.
+    val config = requireNotNull(YamlConfig("migration.yaml")) { "Missing migration.yaml" }
     val output = generateMigration(
         DatabaseSettings.from(config).connect(),
         applicationTables,

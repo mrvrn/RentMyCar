@@ -5,8 +5,29 @@ import io.ktor.server.config.yaml.YamlConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class DatabaseConfigurationTest {
+    @Test
+    fun migrationConfigurationOnlyRequiresDatabaseSettings() {
+        val variables = loadEnvironment()
+        val previousSecret = System.getProperty("JWT_SECRET")
+        System.clearProperty("JWT_SECRET")
+        try {
+            // The CLI must load its configuration without resolving any JWT settings.
+            val config = assertNotNull(YamlConfig("migration.yaml"))
+            assertNull(config.propertyOrNull("jwt.secret"))
+            assertEquals(variables["MYSQL_USER"] ?: "rentmycar", config.property("database.user").getString())
+            assertEquals(variables["MYSQL_PASSWORD"] ?: "rentmycar_dev", config.property("database.password").getString())
+            assertEquals(
+                variables["DATABASE_URL"] ?: "jdbc:mysql://127.0.0.1:3306/rentmycar",
+                config.property("database.url").getString()
+            )
+        } finally {
+            if (previousSecret != null) System.setProperty("JWT_SECRET", previousSecret)
+        }
+    }
+
     @Test
     fun yamlResolvesLoadedCredentials() {
         // Load .env values and expose them as JVM system properties for YAML resolution.
