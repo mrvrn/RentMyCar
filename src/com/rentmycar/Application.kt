@@ -6,6 +6,7 @@ import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import com.rentmycar.database.configureDatabase
 import io.github.cdimascio.dotenv.dotenv
+import com.rentmycar.server.auth.configureSecurity
 
 val appEnvironment = dotenv {
     ignoreIfMissing = true
@@ -26,5 +27,6 @@ fun Application.module() {
         json()
     }
 
+    configureSecurity()
     configureRouting()
 }

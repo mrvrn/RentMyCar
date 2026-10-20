@@ -2,7 +2,7 @@ package com.rentmycar.domain.user
 
 import com.rentmycar.domain.user.dto.UserDto
 
-fun UserDAO.toDto(): UserDto = UserDto(
+fun User.toDto(): UserDto = UserDto(
     id = id.value,
     name = name,
     email = email,

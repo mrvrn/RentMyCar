@@ -19,6 +19,8 @@ dependencies:
     - com.jayway.jsonpath:json-path:2.9.0
     - io.github.cdimascio:dotenv-kotlin:6.5.1
     - $ktor.server.auth
+    - $ktor.server.auth.jwt
+    - at.favre.lib:bcrypt:0.10.2
 
     # Exposed
     - org.jetbrains.exposed:exposed-core:1.0.0

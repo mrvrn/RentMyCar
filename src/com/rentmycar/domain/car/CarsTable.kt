@@ -4,12 +4,11 @@ import com.rentmycar.domain.location.Locations
 import com.rentmycar.domain.user.Users
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ReferenceOption
-import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.dao.id.LongIdTable
 import org.jetbrains.exposed.v1.json.json
 
 
-object Cars : Table("cars") {
-    val id = long("id").autoIncrement()
+object Cars : LongIdTable("cars") {
     val ownerId = reference("ownerId", Users.id, onDelete = ReferenceOption.CASCADE)
     val brand  = varchar("brand", 255)
     val type = varchar("type", 255)
@@ -19,6 +18,4 @@ object Cars : Table("cars") {
     val dropOffId = reference("dropOffId", Locations.id)
     val pictures = json<List<String>>("pictures", Json.Default).nullable()
     val isAvailable = bool("isAvailable").default(false)
-
-    override val primaryKey = PrimaryKey(id)
 }
