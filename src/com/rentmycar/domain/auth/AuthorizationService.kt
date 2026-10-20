@@ -12,7 +12,7 @@ class AuthorizationService(private val userRepository: IUserRepository) {
     private val passwordVerificationDispatcher = Dispatchers.Default.limitedParallelism(2)
 
     suspend fun authenticate(credentials: LoginUserDto): User? {
-        val user = userRepository.findByEmail(credentials.email) ?: return null
+        val user = userRepository.findByEmail(credentials.email.trim()) ?: return null
         val storedHash = user.password
         val passwordMatches = withContext(passwordVerificationDispatcher) {
             verifyPassword(credentials.password, storedHash)

@@ -129,6 +129,26 @@ class JwtAuthTest {
     }
 
     @Test
+    fun loginTrimsEmailWhitespace() = jwtTest {
+        assertEquals(HttpStatusCode.OK, client.login("  $EMAIL  ", PASSWORD).status)
+    }
+
+    @Test
+    fun loginDoesNotTrimPasswordWhitespace() = jwtTest {
+        assertEquals(HttpStatusCode.Unauthorized, client.login(EMAIL, " $PASSWORD ").status)
+    }
+
+    @Test
+    fun logoutExplicitlyReportsUnsupportedTokenRevocation() = jwtTest {
+        val response = client.post("/logout")
+        assertEquals(HttpStatusCode.NotImplemented, response.status)
+        assertEquals(
+            "Server-side logout is not implemented. Discard the token on the client; it remains valid until expiry.",
+            response.bodyAsText()
+        )
+    }
+
+    @Test
     fun loginWithUnknownEmailIsRejected() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.login("nobody@example.com", PASSWORD).status)
     }

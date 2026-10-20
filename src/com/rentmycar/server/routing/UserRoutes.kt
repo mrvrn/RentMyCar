@@ -119,7 +119,10 @@ fun Route.userRoutes(repository: IUserRepository) {
 
     route("/logout") {
         post {
-            // TODO
+            call.respond(
+                HttpStatusCode.NotImplemented,
+                "Server-side logout is not implemented. Discard the token on the client; it remains valid until expiry."
+            )
         }
     }
 }
