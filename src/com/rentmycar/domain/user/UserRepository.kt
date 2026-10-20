@@ -1,7 +1,7 @@
 package com.rentmycar.domain.user
 
 import com.rentmycar.database.withTransaction
-import com.rentmycar.domain.auth.AuthorizationService.hashPassword
+import com.rentmycar.domain.auth.PasswordService
 import com.rentmycar.domain.base.BaseRepository
 import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.UserDto
@@ -16,7 +16,7 @@ class UserRepository : IUserRepository, BaseRepository<User, UserDto>(User) {
 
     override suspend fun create(user: CreateUserDto) {
         try {
-            val userPassword = hashPassword(user.password)
+            val userPassword = PasswordService.hashPassword(user.password)
 
             withTransaction {
                 User.new {

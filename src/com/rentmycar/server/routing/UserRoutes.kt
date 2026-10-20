@@ -18,6 +18,8 @@ import io.ktor.server.routing.*
 import java.util.Date
 
 fun Route.userRoutes(repository: IUserRepository) {
+    val authorizationService = AuthorizationService(repository)
+
     val jwtConfig = environment.config
     val secret = jwtConfig.property("jwt.secret").getString()
     val issuer = jwtConfig.property("jwt.issuer").getString()
@@ -101,7 +103,7 @@ fun Route.userRoutes(repository: IUserRepository) {
     route("/login") {
         post {
             val credentials = call.receive<LoginUserDto>()
-            val user = AuthorizationService.authenticate(credentials, repository)
+            val user = authorizationService.authenticate(credentials)
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid email or password")
 
             val token = JWT.create()

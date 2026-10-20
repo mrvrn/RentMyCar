@@ -2,7 +2,7 @@ package test
 
 import com.rentmycar.database.DatabaseSettings
 import com.rentmycar.database.migrateDatabase
-import com.rentmycar.domain.auth.AuthorizationService.verifyPassword
+import com.rentmycar.domain.auth.PasswordService.verifyPassword
 import com.rentmycar.domain.user.User
 import com.rentmycar.domain.user.UserRepository
 import com.rentmycar.domain.user.DuplicateEmailException
