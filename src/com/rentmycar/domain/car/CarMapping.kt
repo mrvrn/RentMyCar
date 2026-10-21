@@ -8,9 +8,15 @@ fun Car.toDto(): CarDto = CarDto(
     brand = brand,
     type = type,
     licensePlate = licensePlate,
+<<<<<<< HEAD
     pricePerHour = pricePerHour,
     pickupId = pickup.id.value,
     dropOffId = dropOff.id.value,
+=======
+    pricePerDay = pricePerDay.toDouble(),
+    pickupLocationId = pickup.id.value,
+    dropOffLocationId = dropOff.id.value,
+>>>>>>> ceb7995 (Refactor car CRUD to Exposed DAO BaseRepository architecture matching master)
     pictures = pictures,
     isAvailable = isAvailable
 )
