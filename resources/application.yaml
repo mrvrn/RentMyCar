@@ -9,3 +9,9 @@ database:
     url: "$DATABASE_URL:jdbc:mysql://127.0.0.1:3306/rentmycar"
     user: "$MYSQL_USER:rentmycar"
     password: "$MYSQL_PASSWORD:rentmycar_dev"
+
+jwt:
+    secret: "$JWT_SECRET"
+    issuer: "http://localhost:8080/"
+    audience: "rentmycar"
+    realm: "RentMyCar"

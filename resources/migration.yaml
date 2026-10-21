@@ -1,0 +1,5 @@
+# Database-only configuration for the migration CLI. Keep defaults aligned with application.yaml.
+database:
+    url: "$DATABASE_URL:jdbc:mysql://127.0.0.1:3306/rentmycar"
+    user: "$MYSQL_USER:rentmycar"
+    password: "$MYSQL_PASSWORD:rentmycar_dev"
