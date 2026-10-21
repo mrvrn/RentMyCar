@@ -3,29 +3,27 @@ package com.rentmycar.server.routing
 import com.rentmycar.domain.car.ICarRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
-import com.rentmycar.domain.car.AddCarRequest
-import com.rentmycar.domain.car.CarService
-import com.rentmycar.domain.car.CarResponse
-import com.rentmycar.domain.car.UpdateCarRequest
+import com.rentmycar.domain.car.CarRepository
+import com.rentmycar.domain.car.DuplicateLicensePlateException
+import com.rentmycar.domain.car.ICarRepository
+import com.rentmycar.domain.car.dto.CreateCarDto
+import com.rentmycar.domain.car.dto.UpdateCarDto
 import io.ktor.http.*
-import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
-import java.sql.SQLIntegrityConstraintViolationException
 
 val carRoutesLogger = LoggerFactory.getLogger("CarRoutes")
 
-fun Route.carRoutes(repository: ICarRepository) {
+fun Route.carRoutes(repository: ICarRepositoryrepository: ICarRepository = CarRepository()) {
     route("/cars") {
         get {
             try {
-                carRoutesLogger.info("Received GET /cars request")
-                val cars = CarService.getAllCars()
-                carRoutesLogger.info("Fetched ${cars.size} cars")
+                val cars = repository.findAll()
                 call.respond(HttpStatusCode.OK, cars)
             } catch (e: Exception) {
                 carRoutesLogger.error("Internal server error: ${e.message}", e)
@@ -34,17 +32,18 @@ fun Route.carRoutes(repository: ICarRepository) {
         }
 
         get("/{id}") {
+            val id = call.parameters["id"]?.toLongOrNull()
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldig car ID"))
+                return@get
+            }
+
             try {
-                val id = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException("Ongeldig car ID")
-                carRoutesLogger.info("Received GET /cars/$id request")
-                val car = CarService.getCarById(id)
-                call.respond(HttpStatusCode.OK, car)
-            } catch (e: IllegalArgumentException) {
-                carRoutesLogger.error("Validation error: ${e.message}")
-                if (e.message?.contains("bestaat niet") == true) {
-                    call.respond(HttpStatusCode.NotFound, mapOf("error" to (e.message ?: "Auto niet gevonden")))
+                val car = repository.findById(id)
+                if (car == null) {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
                 } else {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+                    call.respond(HttpStatusCode.OK, car)
                 }
             } catch (e: Exception) {
                 carRoutesLogger.error("Internal server error: ${e.message}", e)
@@ -52,26 +51,37 @@ fun Route.carRoutes(repository: ICarRepository) {
             }
         }
 
-        authenticate {
+        authenticate("auth-jwt") {
             post {
+                val ownerId = call.principal<JWTPrincipal>()
+                    ?.payload
+                    ?.getClaim("userId")
+                    ?.asLong() ?: return@post call.respond(HttpStatusCode.Unauthorized)
+
+                val request = try {
+                    call.receive<CreateCarDto>()
+                } catch (e: BadRequestException) {
+                    return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
+                }
+
+                val validationError = when {
+                    request.brand.isBlank() -> "Merk mag niet leeg zijn"
+                    request.type.isBlank() -> "Type mag niet leeg zijn"
+                    request.licensePlate.isBlank() -> "Kenteken mag niet leeg zijn"
+                    request.pricePerDay <= 0.0 -> "Prijs per dag moet groter zijn dan 0"
+                    else -> null
+                }
+                if (validationError != null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to validationError))
+                    return@post
+                }
+
                 try {
-                    carRoutesLogger.info("Received POST /cars request")
-                    val request = call.receive<AddCarRequest>()
-                    carRoutesLogger.info("Request body: $request")
-                    val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toLong()
-                        ?: return@post call.respond(HttpStatusCode.Unauthorized)
-                    carRoutesLogger.info("Using authenticated ownerId: $ownerId")
-                    val createdCar = CarService.addCar(request, ownerId)
-                    carRoutesLogger.info("Car created successfully: $createdCar")
-                    call.respond(HttpStatusCode.Created, createdCar)
-                } catch (e: io.ktor.server.plugins.ContentTransformationException) {
-                    carRoutesLogger.error("Malformed JSON: ${e.message}")
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
+                    val created = repository.create(request, ownerId)
+                    call.respond(HttpStatusCode.Created, created)
                 } catch (e: IllegalArgumentException) {
-                    carRoutesLogger.error("Validation error: ${e.message}")
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
-                } catch (e: SQLIntegrityConstraintViolationException) {
-                    carRoutesLogger.warn("Duplicate license plate: ${e.message}")
+                } catch (e: DuplicateLicensePlateException) {
                     call.respond(HttpStatusCode.Conflict, mapOf("error" to "Dit kenteken is al in gebruik"))
                 } catch (e: Exception) {
                     carRoutesLogger.error("Internal server error: ${e.message}", e)
@@ -80,27 +90,49 @@ fun Route.carRoutes(repository: ICarRepository) {
             }
 
             put("/{id}") {
+                val id = call.parameters["id"]?.toLongOrNull()
+                if (id == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldig car ID"))
+                    return@put
+                }
+
+                val ownerId = call.principal<JWTPrincipal>()
+                    ?.payload
+                    ?.getClaim("userId")
+                    ?.asLong() ?: return@put call.respond(HttpStatusCode.Unauthorized)
+
+                val existing = repository.findById(id)
+                if (existing == null) {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
+                    return@put
+                }
+
+                if (existing.ownerId != ownerId) {
+                    call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Geen toegang tot deze auto"))
+                    return@put
+                }
+
+                val request = try {
+                    call.receive<UpdateCarDto>()
+                } catch (e: BadRequestException) {
+                    return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
+                }
+
+                if (request.pricePerDay != null && request.pricePerDay <= 0.0) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Prijs per dag moet groter zijn dan 0"))
+                    return@put
+                }
+
                 try {
-                    val id = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException("Ongeldig car ID")
-                    // TODO: Add ownership check when auth is implemented
-                    val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toLong()
-                        ?: return@put call.respond(HttpStatusCode.Unauthorized)
-                    val request = call.receive<UpdateCarRequest>()
-                    carRoutesLogger.info("Received PUT /cars/$id request with body: $request")
-                    val updatedCar = CarService.updateCar(id, request)
-                    call.respond(HttpStatusCode.OK, updatedCar)
-                } catch (e: io.ktor.server.plugins.ContentTransformationException) {
-                    carRoutesLogger.error("Malformed JSON: ${e.message}")
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
-                } catch (e: IllegalArgumentException) {
-                    carRoutesLogger.error("Validation error: ${e.message}")
-                    if (e.message?.contains("bestaat niet") == true) {
-                        call.respond(HttpStatusCode.NotFound, mapOf("error" to (e.message ?: "Auto niet gevonden")))
+                    val updated = repository.update(id, request)
+                    if (updated == null) {
+                        call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
                     } else {
-                        call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+                        call.respond(HttpStatusCode.OK, updated)
                     }
-                } catch (e: SQLIntegrityConstraintViolationException) {
-                    carRoutesLogger.warn("Duplicate license plate: ${e.message}")
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+                } catch (e: DuplicateLicensePlateException) {
                     call.respond(HttpStatusCode.Conflict, mapOf("error" to "Dit kenteken is al in gebruik"))
                 } catch (e: Exception) {
                     carRoutesLogger.error("Internal server error: ${e.message}", e)
@@ -109,20 +141,34 @@ fun Route.carRoutes(repository: ICarRepository) {
             }
 
             delete("/{id}") {
+                val id = call.parameters["id"]?.toLongOrNull()
+                if (id == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldig car ID"))
+                    return@delete
+                }
+
+                val ownerId = call.principal<JWTPrincipal>()
+                    ?.payload
+                    ?.getClaim("userId")
+                    ?.asLong() ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+
+                val existing = repository.findById(id)
+                if (existing == null) {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
+                    return@delete
+                }
+
+                if (existing.ownerId != ownerId) {
+                    call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Geen toegang tot deze auto"))
+                    return@delete
+                }
+
                 try {
-                    val id = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException("Ongeldig car ID")
-                    // TODO: Add ownership check when auth is implemented
-                    val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toLong()
-                        ?: return@delete call.respond(HttpStatusCode.Unauthorized)
-                    carRoutesLogger.info("Received DELETE /cars/$id request")
-                    CarService.deleteCar(id)
-                    call.respond(HttpStatusCode.NoContent)
-                } catch (e: IllegalArgumentException) {
-                    carRoutesLogger.error("Validation error: ${e.message}")
-                    if (e.message?.contains("bestaat niet") == true) {
-                        call.respond(HttpStatusCode.NotFound, mapOf("error" to (e.message ?: "Auto niet gevonden")))
+                    val deleted = repository.delete(id)
+                    if (deleted) {
+                        call.respond(HttpStatusCode.NoContent)
                     } else {
-                        call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Ongeldige input")))
+                        call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
                     }
                 } catch (e: Exception) {
                     carRoutesLogger.error("Internal server error: ${e.message}", e)

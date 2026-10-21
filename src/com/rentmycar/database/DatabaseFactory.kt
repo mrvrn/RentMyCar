@@ -6,10 +6,6 @@ import io.ktor.server.config.ApplicationConfig
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 
-// Store database settings globally for use in services
-// TODO: Replace with proper dependency injection when auth is implemented
-var currentDatabaseSettings: DatabaseSettings? = null
-
 data class DatabaseSettings(val url: String, val user: String, val password: String) {
     companion object {
         fun from(config: ApplicationConfig): DatabaseSettings = DatabaseSettings(
@@ -39,7 +35,6 @@ data class DatabaseSettings(val url: String, val user: String, val password: Str
 
 fun Application.configureDatabase() {
     val settings = DatabaseSettings.from(environment.config)
-    currentDatabaseSettings = settings // Store globally for services
     migrateDatabase(settings)
     settings.connect()
 }
