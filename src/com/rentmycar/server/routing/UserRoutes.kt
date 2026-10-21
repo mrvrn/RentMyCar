@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.rentmycar.domain.auth.AuthorizationService
 import com.rentmycar.domain.user.DuplicateEmailException
 import com.rentmycar.domain.user.IUserRepository
+import com.rentmycar.domain.user.UserRole
 import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.LoginUserDto
 import io.ktor.http.HttpStatusCode
@@ -71,6 +72,7 @@ fun Route.userRoutes(repository: IUserRepository) {
                 email = input.email.trim(),
                 phone = input.phone.trim(),
                 address = input.address.trim(),
+                role = input.role ?: UserRole.HUURDER
             )
 
             val error = when {
@@ -110,10 +112,11 @@ fun Route.userRoutes(repository: IUserRepository) {
                 .withAudience(audience)
                 .withIssuer(issuer)
                 .withClaim("userId", user.id.value)
+                .withClaim("role", user.role.name)
                 .withExpiresAt(Date(System.currentTimeMillis() + 60 * 60 * 1000)) // 1 hour
                 .sign(Algorithm.HMAC256(secret))
 
-            call.respond(mapOf("token" to token))
+            call.respond(mapOf("token" to token, "role" to user.role.name))
         }
     }
 

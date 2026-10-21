@@ -25,6 +25,7 @@ class UserRepository : IUserRepository, BaseRepository<User, UserDto>(User) {
                     phone = user.phone
                     address = user.address
                     password = userPassword
+                    role = user.role ?: UserRole.HUURDER
                 }
             }
         } catch (exception: SQLException) {

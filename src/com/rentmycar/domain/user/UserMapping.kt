@@ -8,5 +8,6 @@ fun User.toDto(): UserDto = UserDto(
     email = email,
     phone = phone,
     address = address,
-    bonusPoints = bonusPoints
+    bonusPoints = bonusPoints,
+    role = role
 )
