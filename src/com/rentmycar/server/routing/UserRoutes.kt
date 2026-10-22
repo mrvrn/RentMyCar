@@ -72,7 +72,6 @@ fun Route.userRoutes(repository: IUserRepository) {
                 email = input.email.trim(),
                 phone = input.phone.trim(),
                 address = input.address.trim(),
-                role = input.role ?: UserRole.HUURDER
             )
 
             val error = when {
@@ -94,7 +93,8 @@ fun Route.userRoutes(repository: IUserRepository) {
             }
 
             try {
-                repository.create(user)
+                // Self-registration always creates a HUURDER; AANBIEDER is never client-assignable.
+                repository.create(user, UserRole.HUURDER)
             } catch (_: DuplicateEmailException) {
                 return@post call.respond(HttpStatusCode.Conflict, "Email is already registered")
             }

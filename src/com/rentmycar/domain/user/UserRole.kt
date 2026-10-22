@@ -8,10 +8,6 @@ enum class UserRole {
     HUURDER;
 
     companion object {
-        fun fromString(value: String?): UserRole? = when (value?.trim()?.uppercase()) {
-            "AANBIEDER", "CAR_OWNER", "OWNER" -> AANBIEDER
-            "HUURDER", "RENTER", "CUSTOMER" -> HUURDER
-            else -> null
-        }
+        fun fromString(value: String?): UserRole? = entries.firstOrNull { it.name == value }
     }
 }

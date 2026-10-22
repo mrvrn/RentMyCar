@@ -1,6 +1,5 @@
 package com.rentmycar.domain.user.dto
 
-import com.rentmycar.domain.user.UserRole
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,5 +9,4 @@ data class CreateUserDto(
     val phone: String,
     val address: String,
     val password: String,
-    val role: UserRole? = UserRole.HUURDER
 )

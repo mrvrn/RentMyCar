@@ -14,7 +14,7 @@ class UserRepository : IUserRepository, BaseRepository<User, UserDto>(User) {
     // Delegate to the user mapper, which excludes the password from responses.
     override fun toDto(entity: User): UserDto = entity.toDto()
 
-    override suspend fun create(user: CreateUserDto) {
+    override suspend fun create(user: CreateUserDto, role: UserRole) {
         try {
             val userPassword = PasswordService.hashPassword(user.password)
 
@@ -25,7 +25,7 @@ class UserRepository : IUserRepository, BaseRepository<User, UserDto>(User) {
                     phone = user.phone
                     address = user.address
                     password = userPassword
-                    role = user.role ?: UserRole.HUURDER
+                    this.role = role
                 }
             }
         } catch (exception: SQLException) {

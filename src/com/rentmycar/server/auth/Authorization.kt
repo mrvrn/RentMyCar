@@ -15,15 +15,6 @@ fun ApplicationCall.authenticatedUserId(): Long? =
 fun ApplicationCall.authenticatedUserRole(): UserRole? =
     UserRole.fromString(principal<JWTPrincipal>()?.payload?.getClaim("role")?.asString())
 
-suspend fun ApplicationCall.requireRole(vararg allowedRoles: UserRole): Boolean {
-    val role = authenticatedUserRole()
-    if (role == null || role !in allowedRoles) {
-        respond(HttpStatusCode.Forbidden, "Access denied: insufficient permissions")
-        return false
-    }
-    return true
-}
-
 class RoleAuthorizationConfig {
     var allowedRoles: Set<UserRole> = emptySet()
 }
@@ -34,10 +25,16 @@ val RoleAuthorizationPlugin = createRouteScopedPlugin(
 ) {
     val allowedRoles = pluginConfig.allowedRoles
     on(AuthenticationChecked) { call ->
-        val principal = call.principal<JWTPrincipal>() ?: return@on
-        val roleClaim = principal.payload.getClaim("role")?.asString()
-        val userRole = UserRole.fromString(roleClaim)
+        // Authentication already responded (e.g. 401 challenge).
+        if (call.isHandled) return@on
 
+        // Fail closed: no principal means no access, even if authorize {} is used outside authenticate {}.
+        if (call.principal<JWTPrincipal>() == null) {
+            call.respond(HttpStatusCode.Unauthorized, "Authentication required")
+            return@on
+        }
+
+        val userRole = call.authenticatedUserRole()
         if (userRole == null || userRole !in allowedRoles) {
             call.respond(HttpStatusCode.Forbidden, "Access denied: insufficient permissions")
         }
@@ -46,7 +43,7 @@ val RoleAuthorizationPlugin = createRouteScopedPlugin(
 
 /**
  * Ensures that the authenticated user has one of [allowedRoles].
- * If not, the request responds with 403 Forbidden.
+ * Otherwise responds with 401 (no principal) or 403 (wrong role) and the route handler is not executed.
  */
 fun Route.authorize(vararg allowedRoles: UserRole, build: Route.() -> Unit): Route {
     val authorizedRoute = createChild(object : RouteSelector() {

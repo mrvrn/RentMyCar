@@ -8,6 +8,6 @@ interface IUserRepository {
     suspend fun findAll(): List<UserDto>
     suspend fun findById(id: Long): UserDto?
     suspend fun delete(id: Long): Boolean
-    suspend fun create(user: CreateUserDto)
+    suspend fun create(user: CreateUserDto, role: UserRole = UserRole.HUURDER)
     suspend fun findByEmail(email: String): User?
 }
