@@ -22,7 +22,7 @@ class Car(id: EntityID<Long>) : LongEntity(id) {
     var brand by Cars.brand
     var type by Cars.type
     var licensePlate by Cars.licensePlate
-    var pricePerDay by Cars.pricePerDay
+    var pricePerHour by Cars.pricePerHour
     var pickup by Location referencedOn Cars.pickupId
     var dropOff by Location referencedOn Cars.dropOffId
     var pictures by Cars.pictures

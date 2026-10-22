@@ -1,19 +1,28 @@
 package com.rentmycar.server.routing
 
+import com.rentmycar.domain.car.ICarRepository
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 
-fun Route.carRoutes() {
+fun Route.carRoutes(repository: ICarRepository) {
     route("/cars") {
-        // These are examples
-//        post("/{id}/contacts") {
-//            val id = call.parameters["id"]!!.toLong()
-//            val contact = call.receive<Contact>()
-//            val updated = service.addContact(CustomerId(id), contact)
-//            call.respond(updated ?: HttpStatusCode.NotFound)
-//        }
-//
         get("/{id}") {
-            println(call.parameters["id"])
+            val id = call.parameters["id"]?.toLongOrNull()
+
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid car ID")
+                return@get
+            }
+
+            val car = repository.findById(id)
+
+            if (car == null) {
+                call.respond(HttpStatusCode.NotFound, "Car not found")
+                return@get
+            }
+
+            call.respond(car)
         }
     }
 }
