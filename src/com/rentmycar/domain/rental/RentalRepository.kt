@@ -1,42 +1,82 @@
 package com.rentmycar.domain.rental
 
 import com.rentmycar.database.withTransaction
-import com.rentmycar.domain.auth.PasswordService
 import com.rentmycar.domain.base.BaseRepository
-import com.rentmycar.domain.rental.Rentals.carId
+import com.rentmycar.domain.car.Car
+import com.rentmycar.domain.car.Cars
 import com.rentmycar.domain.rental.dto.CreateRentalDto
 import com.rentmycar.domain.rental.dto.RentalDto
-import com.rentmycar.domain.user.DuplicateEmailException
 import com.rentmycar.domain.user.User
 import kotlinx.datetime.LocalDateTime
-import java.sql.SQLException
+import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import java.math.BigDecimal
+import java.math.RoundingMode
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+
+internal fun calculateRentalPrice(
+    pricePerHour: BigDecimal,
+    start: LocalDateTime,
+    end: LocalDateTime
+): BigDecimal {
+    require(end > start) { "End time must be after start time" }
+    // Use UTC to measure the supplied local clock times without DST adjustments.
+    val duration = end.toInstant(TimeZone.UTC) - start.toInstant(TimeZone.UTC)
+    val nanos = (duration - duration.inWholeSeconds.seconds).inWholeNanoseconds
+    val seconds = "${duration.inWholeSeconds}.${nanos.toString().padStart(9, '0')}".toBigDecimal()
+    return (pricePerHour * seconds)
+        .divide("3600".toBigDecimal(), 2, RoundingMode.HALF_UP)
+}
 
 class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Rental) {
     override fun toDto(entity: Rental): RentalDto = entity.toDto()
 
-    override suspend fun create(rental: CreateRentalDto, renterId: Long, carId: Long) {
+    override suspend fun create(
+        rental: CreateRentalDto,
+        renterId: Long,
+        carId: Long
+    ): RentalDto {
+        require(rental.carId == carId) { "Car ID must match the car in the URL" }
         val start = LocalDateTime.parse(rental.startAt)
         val end = LocalDateTime.parse(rental.endAt)
+        require(end > start) { "End time must be after start time" }
 
-        require(end > start) {
-            "End time must be after start time"
+        return withTransaction {
+            // Serialize bookings for this car before checking for overlapping dates.
+            Cars.selectAll().where { Cars.id eq carId }.forUpdate().singleOrNull()
+                ?: throw RentalNotFoundException("Car not found")
+            val selectedCar = Car[carId]
+            val selectedRenter = User.findById(renterId)
+                ?: throw RentalNotFoundException("Renter not found")
+
+            if (!selectedCar.isAvailable) {
+                throw RentalUnavailableException("Car is unavailable")
+            }
+            val overlapping = Rental.find {
+                (Rentals.carId eq carId) and
+                    (Rentals.status inList listOf(
+                        RentalStatus.PENDING, RentalStatus.CONFIRMED, RentalStatus.ACTIVE
+                    )) and
+                    (Rentals.startAt less end) and (Rentals.endAt greater start)
+            }.firstOrNull()
+            if (overlapping != null) {
+                throw RentalUnavailableException("Car is already reserved for this period")
+            }
+
+            val price = calculateRentalPrice(selectedCar.pricePerHour, start, end)
+            require(price <= "99999999.99".toBigDecimal()) { "Total price exceeds the supported maximum" }
+            Rental.new {
+                car = selectedCar
+                renter = selectedRenter
+                startAt = start
+                endAt = end
+                status = RentalStatus.PENDING
+                totalPrice = price
+                cancelledAt = null
+                // createdAt uses the database default.
+            }.toDto()
         }
-
-
-
-//        try {
-//            withTransaction {
-//                Rental.new {
-////                    carId = rental.carId
-//                }
-//            }
-//        } catch (exception: SQLException) {
-//            // MySQL duplicate-key errors also cover concurrent registrations.
-//            if (generateSequence<Throwable>(exception) { it.cause }
-//                    .filterIsInstance<SQLException>().any { it.errorCode == 1062 }) {
-//                throw DuplicateEmailException(exception)
-//            }
-//            throw exception
-//        }
     }
 }

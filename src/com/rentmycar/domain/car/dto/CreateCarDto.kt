@@ -1,6 +1,6 @@
 package com.rentmycar.domain.car.dto
 
-import kotlinx.serialization.Contextual
+import com.rentmycar.server.serialization.BigDecimalSerializer
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
@@ -10,7 +10,7 @@ data class CreateCarDto(
     val brand: String,
     val type: String,
     val licensePlate: String,
-    @Contextual val pricePerHour: BigDecimal,
+    @Serializable(with = BigDecimalSerializer::class) val pricePerHour: BigDecimal,
     val pickupId: Long,
     val dropOffId: Long,
     val pictures: List<String>? = null,
