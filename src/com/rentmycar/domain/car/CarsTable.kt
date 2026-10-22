@@ -13,7 +13,7 @@ object Cars : LongIdTable("cars") {
     val brand  = varchar("brand", 255)
     val type = varchar("type", 255)
     val licensePlate = varchar("licensePlate", 255)
-    val pricePerDay = decimal("pricePerDay", 10, 2)
+    val pricePerHour = decimal("pricePerHour", 10, 2)
     val pickupId = reference("pickupId", Locations.id)
     val dropOffId = reference("dropOffId", Locations.id)
     val pictures = json<List<String>>("pictures", Json.Default).nullable()
