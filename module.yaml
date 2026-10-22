@@ -23,11 +23,13 @@ dependencies:
     - at.favre.lib:bcrypt:0.10.2
 
     # Exposed
-    - org.jetbrains.exposed:exposed-core:1.0.0
-    - org.jetbrains.exposed:exposed-jdbc:1.0.0
-    - org.jetbrains.exposed:exposed-migration-jdbc:1.0.0
-    - org.jetbrains.exposed:exposed-json:1.0.0
-    - org.jetbrains.exposed:exposed-dao:1.0.0
+    - org.jetbrains.exposed:exposed-core:1.6.0
+    - org.jetbrains.exposed:exposed-jdbc:1.6.0
+    - org.jetbrains.exposed:exposed-migration-jdbc:1.6.0
+    - org.jetbrains.exposed:exposed-json:1.6.0
+    - org.jetbrains.exposed:exposed-dao:1.6.0
+    - org.jetbrains.exposed:exposed-kotlin-datetime:1.6.0
+#    - org.jetbrains.exposed.v1.sql.CurrentDateTime
 
     # MySQL
     - com.mysql:mysql-connector-j:9.5.0
