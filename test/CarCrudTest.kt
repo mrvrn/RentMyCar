@@ -123,7 +123,7 @@ class CarCrudTest {
     fun postCarWithoutAuthReturnsUnauthorized() = carTest {
         val response = client.post("/cars") {
             contentType(ContentType.Application.Json)
-            setBody("""{"brand":"Tesla","type":"Sedan","licensePlate":"XX-11-YY","pricePerDay":100.0,"pickupLocationId":$pickupLocId,"dropOffLocationId":$dropOffLocId}""")
+            setBody("""{"brand":"Tesla","type":"Sedan","licensePlate":"XX-11-YY","pricePerHour":10.00,"pickupId":$pickupLocId,"dropOffId":$dropOffLocId}""")
         }
         assertEquals(HttpStatusCode.Unauthorized, response.status)
     }
@@ -137,9 +137,9 @@ class CarCrudTest {
                 brand = "Tesla",
                 type = "Model 3",
                 licensePlate = "AA-11-BB",
-                pricePerDay = 85.50,
-                pickupLocationId = pickupLocId,
-                dropOffLocationId = dropOffLocId,
+                pricePerHour = "8.55".toBigDecimal(),
+                pickupId = pickupLocId,
+                dropOffId = dropOffLocId,
                 pictures = listOf("https://example.com/car.png"),
                 isAvailable = true
             )))
@@ -153,6 +153,7 @@ class CarCrudTest {
         val body = Json.parseToJsonElement(getRes.bodyAsText()).jsonObject
         assertEquals("Tesla", body["brand"]!!.jsonPrimitive.content)
         assertEquals(testUserId, body["ownerId"]!!.jsonPrimitive.long)
+        assertEquals("8.55", body["pricePerHour"]!!.jsonPrimitive.content)
 
         // Duplicate license plate rejected with 409
         val dupRes = client.post("/cars") {
@@ -162,9 +163,9 @@ class CarCrudTest {
                 brand = "Tesla",
                 type = "Model 3",
                 licensePlate = "AA-11-BB",
-                pricePerDay = 90.0,
-                pickupLocationId = pickupLocId,
-                dropOffLocationId = dropOffLocId
+                pricePerHour = "9.00".toBigDecimal(),
+                pickupId = pickupLocId,
+                dropOffId = dropOffLocId
             )))
         }
         assertEquals(HttpStatusCode.Conflict, dupRes.status)
@@ -181,11 +182,12 @@ class CarCrudTest {
         val updateRes = client.put("/cars/$carId") {
             bearerAuth(token(testUserId))
             contentType(ContentType.Application.Json)
-            setBody(Json.encodeToString(UpdateCarDto(brand = "Tesla Updated", pricePerDay = 99.0)))
+            setBody(Json.encodeToString(UpdateCarDto(brand = "Tesla Updated", pricePerHour = "9.90".toBigDecimal())))
         }
         assertEquals(HttpStatusCode.OK, updateRes.status)
         val updatedBody = Json.parseToJsonElement(updateRes.bodyAsText()).jsonObject
         assertEquals("Tesla Updated", updatedBody["brand"]!!.jsonPrimitive.content)
+        assertEquals("9.90", updatedBody["pricePerHour"]!!.jsonPrimitive.content)
 
         // Other user cannot delete car
         val forbiddenDelete = client.delete("/cars/$carId") {
