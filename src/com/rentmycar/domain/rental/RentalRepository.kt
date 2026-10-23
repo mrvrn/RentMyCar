@@ -15,6 +15,7 @@ import java.math.RoundingMode
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 internal fun calculateRentalPrice(
     pricePerHour: BigDecimal,
@@ -41,7 +42,15 @@ class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Re
         require(rental.carId == carId) { "Car ID must match the car in the URL" }
         val start = LocalDateTime.parse(rental.startAt)
         val end = LocalDateTime.parse(rental.endAt)
-        require(end > start) { "End time must be after start time" }
+        val now = kotlin.time.Clock.System.now()
+        val zone = TimeZone.of("Europe/Amsterdam")
+
+        require(start.toInstant(zone) > now) {
+            "Start time must be in the future"
+        }
+        require(end > start) {
+            "End time must be after start time"
+        }
 
         return withTransaction {
             // Serialize bookings for this car before checking for overlapping dates.
@@ -78,5 +87,43 @@ class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Re
                 // createdAt uses the database default.
             }.toDto()
         }
+    }
+
+    override suspend fun changeStatus(rentalId: Long, status: RentalStatus, loggedInUserId: Long): RentalDto = withTransaction {
+        // Lock the row so concurrent decisions cannot overwrite one another.
+        Rentals.selectAll().where { Rentals.id eq rentalId }.forUpdate().singleOrNull()
+            ?: throw RentalNotFoundException("Rental not found")
+
+        val rental = Rental[rentalId]
+        if (status == RentalStatus.CANCELLED) {
+            if (rental.renter.id.value != loggedInUserId) {
+                throw RentalAccessDeniedException("Only the renter can cancel a rental")
+            }
+
+            if (rental.status in listOf(RentalStatus.REJECTED, RentalStatus.ACTIVE, RentalStatus.COMPLETED)) {
+                throw RentalUnavailableException("Rejected, active or completed rentals cannot be cancelled")
+            }
+
+            if (rental.status != RentalStatus.CANCELLED) {
+                rental.status = RentalStatus.CANCELLED
+                rental.cancelledAt = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.of("Europe/Amsterdam"))
+            }
+            return@withTransaction rental.toDto()
+        }
+
+        if (rental.car.owner.id.value != loggedInUserId) {
+            throw RentalAccessDeniedException("Only the car owner can approve or reject a reservation")
+        }
+
+        require(status == RentalStatus.CONFIRMED || status == RentalStatus.REJECTED) {
+            "Status must be CONFIRMED, REJECTED or CANCELLED"
+        }
+
+        if (rental.status != RentalStatus.PENDING) {
+            throw RentalUnavailableException("Only pending reservations can be approved or rejected")
+        }
+
+        rental.status = status
+        rental.toDto()
     }
 }

@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 enum class RentalStatus {
     PENDING,
     CONFIRMED,
+    REJECTED,
     ACTIVE,
     COMPLETED,
     CANCELLED

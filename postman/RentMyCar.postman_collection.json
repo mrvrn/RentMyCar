@@ -31,6 +31,21 @@
       "type": "string"
     },
     {
+      "key": "ownerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ownerPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ownerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "startAt",
       "value": "",
       "type": "string"
@@ -42,6 +57,26 @@
     },
     {
       "key": "rentalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rejectedRentalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cancelledAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "activeRentalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "completedRentalId",
       "value": "",
       "type": "string"
     }
@@ -79,7 +114,10 @@
             "exec": [
               "pm.collectionVariables.set('email', 'postman.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');",
               "pm.collectionVariables.unset('token');",
-              "pm.collectionVariables.unset('rentalId');"
+              "pm.collectionVariables.unset('ownerToken');",
+              "pm.collectionVariables.unset('rentalId');",
+              "pm.collectionVariables.unset('rejectedRentalId');",
+              "pm.collectionVariables.unset('cancelledAt');"
             ]
           }
         },
@@ -473,6 +511,1059 @@
             "exec": [
               "pm.test('Status is 400', () => pm.response.to.have.status(400));",
               ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Reject status update without token",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Reject status update by renter",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Login as car owner",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.unset('ownerToken');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Owner JWT returned', () => pm.expect(data.token).to.be.a('string').and.match(/^[^.]+\\.[^.]+\\.[^.]+$/));",
+              "  if (typeof data.token === 'string') pm.collectionVariables.set('ownerToken', data.token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Reject unsupported status transition",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"COMPLETED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Reject unknown status value",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"UNKNOWN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Reject invalid rental ID",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/invalid/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Reject missing rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/9223372036854775807/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Owner rejects reservation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"REJECTED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct rental returned', () => pm.expect(data.id).to.eql(Number(pm.variables.get('rentalId'))));",
+              "  pm.test('Status updated to REJECTED', () => pm.expect(data.status).to.eql('REJECTED'));",
+              "}",
+              "if (pm.response.code === 200) pm.collectionVariables.set('rejectedRentalId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Reject changing a rejected reservation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Rebook rejected period",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.unset('rentalId');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  pm.test('New pending rental returned', () => {",
+              "    pm.expect(data.id).to.be.a('number').and.above(0);",
+              "    pm.expect(data.status).to.eql('PENDING');",
+              "    pm.expect(data.carId).to.eql(Number(pm.variables.get('carId')));",
+              "  });",
+              "  pm.collectionVariables.set('rentalId', data.id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Owner confirms reservation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct rental returned', () => pm.expect(data.id).to.eql(Number(pm.variables.get('rentalId'))));",
+              "  pm.test('Status updated to CONFIRMED', () => pm.expect(data.status).to.eql('CONFIRMED'));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Reject changing a confirmed reservation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"REJECTED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 Reject cancellation without token",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 Reject cancellation by car owner",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 Reject cancellation with invalid rental ID",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/invalid/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 Reject cancellation of missing rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/9223372036854775807/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 Reject cancellation of rejected rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rejectedRentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('rejectedRentalId')) {",
+              "  throw new Error('Set rejectedRentalId to the rental rejected in request 18, or run requests 01-22 first.');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              "pm.test('Rejected rental cannot be cancelled', () => {",
+              "  pm.expect(pm.response.text()).to.eql('Rejected, active or completed rentals cannot be cancelled');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 Renter cancels confirmed rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct rental returned', () => pm.expect(data.id).to.eql(Number(pm.variables.get('rentalId'))));",
+              "  pm.test('Status updated to CANCELLED', () => pm.expect(data.status).to.eql('CANCELLED'));",
+              "}",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct car returned', () => pm.expect(data.carId).to.eql(Number(pm.variables.get('carId'))));",
+              "  pm.test('Cancellation timestamp recorded', () => {",
+              "    pm.expect(data.cancelledAt).to.be.a('string');",
+              "    pm.expect(Number.isFinite(Date.parse(data.cancelledAt + 'Z'))).to.eql(true);",
+              "  });",
+              "  pm.collectionVariables.set('cancelledAt', data.cancelledAt);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 Repeated cancellation preserves timestamp",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct rental returned', () => pm.expect(data.id).to.eql(Number(pm.variables.get('rentalId'))));",
+              "  pm.test('Status updated to CANCELLED', () => pm.expect(data.status).to.eql('CANCELLED'));",
+              "}",
+              "if (pm.response.code === 200) {",
+              "  pm.test('Original cancellation timestamp preserved', () => {",
+              "    const original = Date.parse(pm.variables.get('cancelledAt') + 'Z');",
+              "    const repeated = Date.parse(pm.response.json().cancelledAt + 'Z');",
+              "    // Allow for sub-millisecond precision differences between the DAO and MySQL.",
+              "    pm.expect(Math.abs(repeated - original)).to.be.at.most(1);",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 Reject approval of cancelled rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "31 Rebook cancelled period",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Replacement rental is pending', () => pm.expect(data.status).to.eql('PENDING'));",
+              "  pm.test('New rental created', () => pm.expect(data.id).to.be.a('number').and.above(0));",
+              "  pm.test('Same car and period rebooked', () => {",
+              "    pm.expect(data.carId).to.eql(Number(pm.variables.get('carId')));",
+              "    pm.expect(Date.parse(data.startAt + 'Z')).to.eql(Date.parse(pm.variables.get('startAt') + 'Z'));",
+              "    pm.expect(Date.parse(data.endAt + 'Z')).to.eql(Date.parse(pm.variables.get('endAt') + 'Z'));",
+              "  });",
+              "  pm.collectionVariables.set('rentalId', data.id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32 Reject owner cancelling pending rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "33 Renter cancels pending rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct rental returned', () => pm.expect(data.id).to.eql(Number(pm.variables.get('rentalId'))));",
+              "  pm.test('Status updated to CANCELLED', () => pm.expect(data.status).to.eql('CANCELLED'));",
+              "}",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct car returned', () => pm.expect(data.carId).to.eql(Number(pm.variables.get('carId'))));",
+              "  pm.test('Cancellation timestamp recorded', () => {",
+              "    pm.expect(data.cancelledAt).to.be.a('string');",
+              "    pm.expect(Number.isFinite(Date.parse(data.cancelledAt + 'Z'))).to.eql(true);",
+              "  });",
+              "  pm.collectionVariables.set('cancelledAt', data.cancelledAt);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "34 Reject cancellation of active rental (optional)",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{activeRentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('activeRentalId')) {",
+              "  console.info('Skipping ACTIVE cancellation check: set activeRentalId to a rental belonging to the logged-in renter.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              "pm.test('ACTIVE rental cannot be cancelled', () => {",
+              "  pm.expect(pm.response.text()).to.eql('Rejected, active or completed rentals cannot be cancelled');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "35 Reject cancellation of completed rental (optional)",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{completedRentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('completedRentalId')) {",
+              "  console.info('Skipping COMPLETED cancellation check: set completedRentalId to a rental belonging to the logged-in renter.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              "pm.test('COMPLETED rental cannot be cancelled', () => {",
+              "  pm.expect(pm.response.text()).to.eql('Rejected, active or completed rentals cannot be cancelled');",
+              "});"
             ]
           }
         }

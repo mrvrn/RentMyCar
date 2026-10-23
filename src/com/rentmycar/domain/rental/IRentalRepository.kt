@@ -8,4 +8,5 @@ interface IRentalRepository {
     suspend fun findAll(): List<RentalDto>
     suspend fun findById(id: Long): RentalDto?
     suspend fun create(rental: CreateRentalDto, renterId: Long, carId: Long): RentalDto
+    suspend fun changeStatus(rentalId: Long, status: RentalStatus, loggedInUserId: Long): RentalDto
 }
