@@ -85,6 +85,33 @@ class MigrationsTest {
         }
     }
 
+    @Test
+    fun uniqueLicensePlateIndexRejectsDuplicatesAndSkipsExistingIndex() = withDatabase { settings ->
+        Flyway.configure()
+            .dataSource(settings.url, settings.user, settings.password)
+            .locations("classpath:db/migration")
+            .target("20261022180000000")
+            .load()
+            .migrate()
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { it.executeUpdate("ALTER TABLE cars ADD UNIQUE INDEX idx_unique_license_plate (licensePlate)") }
+        }
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261022180000000" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("INSERT INTO users (id, name, email, phone, address, password) VALUES (1, 'Test', 'test@example.com', '123', 'Test address', 'test hash')")
+                statement.executeUpdate("INSERT INTO locations (id, streetName, houseNumber, postalCode, city, country, userId) VALUES (1, 'Test street', '1', '1234AB', 'Test city', 'NL', 1)")
+                statement.executeUpdate("INSERT INTO cars (ownerId, brand, type, licensePlate, pricePerHour, pickupId, dropOffId) VALUES (1, 'Test', 'Test', 'DUP-1', 10.00, 1, 1)")
+                assertFailsWith<java.sql.SQLIntegrityConstraintViolationException> {
+                    statement.executeUpdate("INSERT INTO cars (ownerId, brand, type, licensePlate, pricePerHour, pickupId, dropOffId) VALUES (1, 'Test', 'Test', 'DUP-1', 12.00, 1, 1)")
+                }
+            }
+        }
+    }
+
     private class Notes(withSummary: Boolean = false) : Table("test_notes") {
         val id = long("id").autoIncrement()
         val text = varchar("text", 100)
