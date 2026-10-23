@@ -94,6 +94,30 @@ class MigrationsTest {
         assertEquals(0, migrateDatabase(settings).migrationsExecuted)
     }
 
+    @Test
+    fun priceRenameMigrationSkipsAlreadyRenamedColumn() = withDatabase { settings ->
+        Flyway.configure()
+            .dataSource(settings.url, settings.user, settings.password)
+            .locations("classpath:db/migration")
+            .target("20261013142355397")
+            .load()
+            .migrate()
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { it.executeUpdate("ALTER TABLE cars RENAME COLUMN pricePerDay TO pricePerHour") }
+        }
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261013142355397" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.metaData.getColumns(connection.catalog, null, "cars", "pricePer%").use { rows ->
+                assertTrue(rows.next())
+                assertEquals("pricePerHour", rows.getString("COLUMN_NAME"))
+                assertTrue(!rows.next())
+            }
+        }
+    }
+
     private class Notes(withSummary: Boolean = false) : Table("test_notes") {
         val id = long("id").autoIncrement()
         val text = varchar("text", 100)
