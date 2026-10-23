@@ -205,4 +205,54 @@ class CarCrudTest {
         val afterDelete = client.get("/cars/$carId")
         assertEquals(HttpStatusCode.NotFound, afterDelete.status)
     }
+
+    private fun carJson(
+        licensePlate: String,
+        brand: String = "Audi",
+        type: String = "A3",
+        pricePerHour: String = "10.00",
+        pickupId: Long = pickupLocId,
+    ) = """{"brand":"$brand","type":"$type","licensePlate":"$licensePlate","pricePerHour":$pricePerHour,"pickupId":$pickupId,"dropOffId":$dropOffLocId}"""
+
+    private suspend fun ApplicationTestBuilder.postCar(json: String, userId: Long = testUserId) = client.post("/cars") {
+        bearerAuth(token(userId))
+        contentType(ContentType.Application.Json)
+        setBody(json)
+    }
+
+    private suspend fun ApplicationTestBuilder.putCar(id: Long, json: String, userId: Long = testUserId) = client.put("/cars/$id") {
+        bearerAuth(token(userId))
+        contentType(ContentType.Application.Json)
+        setBody(json)
+    }
+
+    @Test
+    fun invalidCreateInputReturnsBadRequest() = carTest {
+        assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-01", pricePerHour = "0")).status)
+        assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-02", pricePerHour = "-5.00")).status)
+        assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-03", pricePerHour = "\"abc\"")).status)
+        assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-04", brand = " ")).status)
+        assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-05", type = "")).status)
+        assertEquals(HttpStatusCode.BadRequest, postCar(carJson("  ")).status)
+        assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-06", pickupId = 999_999)).status)
+        assertEquals(HttpStatusCode.BadRequest, postCar("""{"brand":"Audi"}""").status)
+        assertEquals(HttpStatusCode.NotFound, client.get("/cars/999999").status)
+    }
+
+    @Test
+    fun invalidUpdateInputIsRejected() = carTest {
+        val firstId = Json.parseToJsonElement(postCar(carJson("UPD-01")).bodyAsText()).jsonObject["id"]!!.jsonPrimitive.long
+        assertEquals(HttpStatusCode.Created, postCar(carJson("UPD-02")).status)
+
+        assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"brand":" "}""").status)
+        assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"licensePlate":""}""").status)
+        assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"pricePerHour":0}""").status)
+        assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"dropOffId":999999}""").status)
+        assertEquals(HttpStatusCode.Conflict, putCar(firstId, """{"licensePlate":"UPD-02"}""").status)
+        assertEquals(HttpStatusCode.NotFound, putCar(999_999, """{"brand":"Audi"}""").status)
+
+        val unchanged = Json.parseToJsonElement(client.get("/cars/$firstId").bodyAsText()).jsonObject
+        assertEquals("UPD-01", unchanged["licensePlate"]!!.jsonPrimitive.content)
+        assertEquals("10.00", unchanged["pricePerHour"]!!.jsonPrimitive.content)
+    }
 }

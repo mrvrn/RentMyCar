@@ -114,8 +114,15 @@ fun Route.carRoutes(repository: ICarRepository) {
                     return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
                 }
 
-                if (request.pricePerHour != null && request.pricePerHour.signum() <= 0) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Prijs per uur moet groter zijn dan 0"))
+                val validationError = when {
+                    request.brand?.isBlank() == true -> "Merk mag niet leeg zijn"
+                    request.type?.isBlank() == true -> "Type mag niet leeg zijn"
+                    request.licensePlate?.isBlank() == true -> "Kenteken mag niet leeg zijn"
+                    request.pricePerHour != null && request.pricePerHour.signum() <= 0 -> "Prijs per uur moet groter zijn dan 0"
+                    else -> null
+                }
+                if (validationError != null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to validationError))
                     return@put
                 }
 
