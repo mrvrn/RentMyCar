@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory
 
 val carRoutesLogger = LoggerFactory.getLogger("CarRoutes")
 
-fun Route.carRoutes(repository: ICarRepositoryrepository: ICarRepository = CarRepository()) {
+fun Route.carRoutes(repository: ICarRepository) {
     route("/cars") {
         get {
             try {
@@ -152,7 +152,7 @@ fun Route.carRoutes(repository: ICarRepositoryrepository: ICarRepository = CarRe
                     request.brand.isBlank() -> "Merk mag niet leeg zijn"
                     request.type.isBlank() -> "Type mag niet leeg zijn"
                     request.licensePlate.isBlank() -> "Kenteken mag niet leeg zijn"
-                    request.pricePerDay <= 0.0 -> "Prijs per dag moet groter zijn dan 0"
+                    request.pricePerHour.signum() <= 0 -> "Prijs per uur moet groter zijn dan 0"
                     else -> null
                 }
                 if (validationError != null) {
@@ -202,8 +202,8 @@ fun Route.carRoutes(repository: ICarRepositoryrepository: ICarRepository = CarRe
                     return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldige JSON"))
                 }
 
-                if (request.pricePerDay != null && request.pricePerDay <= 0.0) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Prijs per dag moet groter zijn dan 0"))
+                if (request.pricePerHour != null && request.pricePerHour.signum() <= 0) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Prijs per uur moet groter zijn dan 0"))
                     return@put
                 }
 

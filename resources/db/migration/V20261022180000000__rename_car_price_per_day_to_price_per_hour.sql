@@ -1,3 +1,5 @@
+-- Cars.pricePerHour (Exposed) replaced pricePerDay; keep existing prices.
+ALTER TABLE cars RENAME COLUMN pricePerDay TO pricePerHour;
 -- Keep existing car prices while aligning the schema with Cars.pricePerHour.
 SET @rename_car_price := (
     SELECT IF(

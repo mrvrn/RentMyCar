@@ -65,6 +65,10 @@ class MigrationsTest {
                 statement.executeUpdate("INSERT INTO cars (id, ownerId, brand, type, licensePlate, pricePerDay, pickupId, dropOffId) VALUES (1, 1, 'Test', 'Test', 'TEST-1', 19.99, 1, 1)")
             }
         }
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261013131505919" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
         assertEquals(5, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->

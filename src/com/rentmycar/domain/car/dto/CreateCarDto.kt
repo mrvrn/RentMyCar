@@ -21,25 +21,13 @@ object BigDecimalSerializer : KSerializer<BigDecimal> {
 
 @Serializable
 data class CreateCarDto(
-    val ownerId: Long,
     val brand: String,
     val type: String,
     val licensePlate: String,
     @Serializable(with = BigDecimalSerializer::class) val pricePerHour: BigDecimal,
+    @Serializable(with = BigDecimalSerializer::class) val pricePerHour: BigDecimal,
     val pickupId: Long,
     val dropOffId: Long,
-=======
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class CreateCarDto(
-    val brand: String,
-    val type: String,
-    val licensePlate: String,
-    val pricePerDay: Double,
-    val pickupLocationId: Long,
-    val dropOffLocationId: Long,
->>>>>>> ceb7995 (Refactor car CRUD to Exposed DAO BaseRepository architecture matching master)
     val pictures: List<String>? = null,
     val isAvailable: Boolean = false
 )
