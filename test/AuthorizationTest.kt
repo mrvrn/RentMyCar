@@ -391,8 +391,8 @@ private class TestCarRepository : ICarRepository {
 
     fun reset(ownerId: Long, renterId: Long) {
         cars.clear()
-        cars[1] = car(1, ownerId)
-        cars[2] = car(2, renterId)
+        cars[1] = carDto(1, ownerId)
+        cars[2] = carDto(2, renterId)
     }
 
     fun contains(id: Long): Boolean = cars.containsKey(id)
@@ -405,12 +405,12 @@ private class TestCarRepository : ICarRepository {
 
     override suspend fun delete(id: Long): Boolean = cars.remove(id) != null
 
-    override suspend fun create(car: CreateCarDto) {
-        created = car
-        cars[3] = car(3, car.ownerId)
+    override suspend fun create(createCar: CreateCarDto) {
+        created = createCar
+        cars[3] = carDto(3, createCar.ownerId)
     }
 
-    private fun car(id: Long, ownerId: Long) = CarDto(
+    private fun carDto(id: Long, ownerId: Long) = CarDto(
         id = id,
         ownerId = ownerId,
         brand = "Test",
