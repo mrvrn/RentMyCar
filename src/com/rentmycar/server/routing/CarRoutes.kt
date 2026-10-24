@@ -1,6 +1,7 @@
 package com.rentmycar.server.routing
 
 import com.rentmycar.domain.car.ICarRepository
+import com.rentmycar.domain.car.InvalidCarLocationException
 import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.user.UserRole
 import com.rentmycar.server.auth.authenticatedUserId
@@ -23,7 +24,11 @@ fun Route.carRoutes(repository: ICarRepository) {
                     return@post call.respond(HttpStatusCode.BadRequest, "Invalid car data")
                 }
 
-                repository.create(input.copy(ownerId = ownerId))
+                try {
+                    repository.create(input.copy(ownerId = ownerId))
+                } catch (_: InvalidCarLocationException) {
+                    return@post call.respond(HttpStatusCode.BadRequest, "Invalid pickup or drop-off location")
+                }
                 call.respond(HttpStatusCode.Created)
             }
 
