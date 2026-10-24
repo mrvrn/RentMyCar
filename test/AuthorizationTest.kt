@@ -51,11 +51,11 @@ class AuthorizationTest {
         val repository = UserRepository()
         val authService = AuthorizationService(repository)
 
-        val aanbiederHandlerCalls = AtomicInteger()
+        val ownerHandlerCalls = AtomicInteger()
         val unauthenticatedHandlerCalls = AtomicInteger()
 
-        var aanbiederId: Long = 0
-        var huurderId: Long = 0
+        var ownerId: Long = 0
+        var renterId: Long = 0
 
         val initDb: Boolean by lazy {
             val mysql = MySQLContainer("mysql:8.1").apply { start() }
@@ -64,21 +64,21 @@ class AuthorizationTest {
             settings.connect()
             runBlocking {
                 repository.create(CreateUserDto(
-                    name = "Aanbieder User",
-                    email = "aanbieder@example.com",
+                    name = "Owner User",
+                    email = "owner@example.com",
                     phone = "0611111111",
                     address = "Street 1",
                     password = "password123",
-                ), UserRole.AANBIEDER)
+                ), UserRole.OWNER)
                 repository.create(CreateUserDto(
-                    name = "Huurder User",
-                    email = "huurder@example.com",
+                    name = "Renter User",
+                    email = "renter@example.com",
                     phone = "0622222222",
                     address = "Street 2",
                     password = "password123",
-                ), UserRole.HUURDER)
-                aanbiederId = repository.findAll().single { it.email == "aanbieder@example.com" }.id
-                huurderId = repository.findAll().single { it.email == "huurder@example.com" }.id
+                ), UserRole.RENTER)
+                ownerId = repository.findAll().single { it.email == "owner@example.com" }.id
+                renterId = repository.findAll().single { it.email == "renter@example.com" }.id
             }
             true
         }
@@ -101,19 +101,19 @@ class AuthorizationTest {
                 userRoutes(repository)
 
                 authenticate("auth-jwt") {
-                    route("/aanbieder-only") {
-                        authorize(UserRole.AANBIEDER) {
+                    route("/owner-only") {
+                        authorize(UserRole.OWNER) {
                             get {
-                                aanbiederHandlerCalls.incrementAndGet()
-                                call.respondText("Welcome Aanbieder")
+                                ownerHandlerCalls.incrementAndGet()
+                                call.respondText("Welcome Owner")
                             }
                         }
                     }
 
-                    route("/huurder-only") {
-                        authorize(UserRole.HUURDER) {
+                    route("/renter-only") {
+                        authorize(UserRole.RENTER) {
                             get {
-                                call.respondText("Welcome Huurder")
+                                call.respondText("Welcome Renter")
                             }
                         }
                     }
@@ -121,7 +121,7 @@ class AuthorizationTest {
 
                 // Misconfiguration guard: authorize {} without authenticate {} must fail closed.
                 route("/authorize-without-authenticate") {
-                    authorize(UserRole.AANBIEDER) {
+                    authorize(UserRole.OWNER) {
                         get {
                             unauthenticatedHandlerCalls.incrementAndGet()
                             call.respondText("Should not be reachable")
@@ -137,7 +137,7 @@ class AuthorizationTest {
     fun loginReturnsJwtWithRoleClaim() = authzTest {
         val response = client.post("/login") {
             contentType(ContentType.Application.Json)
-            setBody("""{"email":"aanbieder@example.com","password":"password123"}""")
+            setBody("""{"email":"owner@example.com","password":"password123"}""")
         }
         assertEquals(HttpStatusCode.OK, response.status)
         val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
@@ -145,64 +145,64 @@ class AuthorizationTest {
         val role = body["role"]?.jsonPrimitive?.content
 
         assertNotNull(token)
-        assertEquals("AANBIEDER", role)
+        assertEquals("OWNER", role)
 
         val decoded = JWT.require(Algorithm.HMAC256(SECRET))
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
             .build()
             .verify(token)
-        assertEquals("AANBIEDER", decoded.getClaim("role").asString())
-        assertEquals(aanbiederId, decoded.getClaim("userId").asLong())
+        assertEquals("OWNER", decoded.getClaim("role").asString())
+        assertEquals(ownerId, decoded.getClaim("userId").asLong())
     }
 
     @Test
-    fun aanbiederCanAccessAanbiederRoute() = authzTest {
+    fun ownerCanAccessOwnerRoute() = authzTest {
         val loginRes = client.post("/login") {
             contentType(ContentType.Application.Json)
-            setBody("""{"email":"aanbieder@example.com","password":"password123"}""")
+            setBody("""{"email":"owner@example.com","password":"password123"}""")
         }
         val token = Json.parseToJsonElement(loginRes.bodyAsText()).jsonObject["token"]!!.jsonPrimitive.content
 
-        val response = client.get("/aanbieder-only") {
+        val response = client.get("/owner-only") {
             bearerAuth(token)
         }
         assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals("Welcome Aanbieder", response.bodyAsText())
+        assertEquals("Welcome Owner", response.bodyAsText())
     }
 
     @Test
-    fun huurderCannotAccessAanbiederRouteGetsForbidden() = authzTest {
+    fun renterCannotAccessOwnerRouteGetsForbidden() = authzTest {
         val loginRes = client.post("/login") {
             contentType(ContentType.Application.Json)
-            setBody("""{"email":"huurder@example.com","password":"password123"}""")
+            setBody("""{"email":"renter@example.com","password":"password123"}""")
         }
         val token = Json.parseToJsonElement(loginRes.bodyAsText()).jsonObject["token"]!!.jsonPrimitive.content
 
-        val response = client.get("/aanbieder-only") {
+        val response = client.get("/owner-only") {
             bearerAuth(token)
         }
         assertEquals(HttpStatusCode.Forbidden, response.status)
     }
 
     @Test
-    fun huurderCanAccessHuurderRoute() = authzTest {
+    fun renterCanAccessRenterRoute() = authzTest {
         val loginRes = client.post("/login") {
             contentType(ContentType.Application.Json)
-            setBody("""{"email":"huurder@example.com","password":"password123"}""")
+            setBody("""{"email":"renter@example.com","password":"password123"}""")
         }
         val token = Json.parseToJsonElement(loginRes.bodyAsText()).jsonObject["token"]!!.jsonPrimitive.content
 
-        val response = client.get("/huurder-only") {
+        val response = client.get("/renter-only") {
             bearerAuth(token)
         }
         assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals("Welcome Huurder", response.bodyAsText())
+        assertEquals("Welcome Renter", response.bodyAsText())
     }
 
     @Test
     fun unauthenticatedRequestGetsUnauthorized() = authzTest {
-        val response = client.get("/aanbieder-only")
+        val response = client.get("/owner-only")
         assertEquals(HttpStatusCode.Unauthorized, response.status)
     }
 
@@ -225,31 +225,31 @@ class AuthorizationTest {
 
     @Test
     fun forbiddenRequestDoesNotExecuteProtectedHandler() = authzTest {
-        val token = loginToken("huurder@example.com")
-        val before = aanbiederHandlerCalls.get()
+        val token = loginToken("renter@example.com")
+        val before = ownerHandlerCalls.get()
 
-        val response = client.get("/aanbieder-only") { bearerAuth(token) }
+        val response = client.get("/owner-only") { bearerAuth(token) }
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
         assertEquals("Access denied: insufficient permissions", response.bodyAsText())
-        assertEquals(before, aanbiederHandlerCalls.get())
+        assertEquals(before, ownerHandlerCalls.get())
     }
 
     @Test
     fun authorizeWithoutAuthenticateFailsClosed() = authzTest {
         val response = client.get("/authorize-without-authenticate") {
-            bearerAuth(signedToken(aanbiederId, "AANBIEDER"))
+            bearerAuth(signedToken(ownerId, "OWNER"))
         }
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertEquals(0, unauthenticatedHandlerCalls.get())
     }
 
     @Test
-    fun selfRegisteredUserCannotBecomeAanbieder() = authzTest {
-        val email = "wannabe-aanbieder@example.com"
+    fun selfRegisteredUserCannotBecomeOwner() = authzTest {
+        val email = "wannabe-owner@example.com"
         val withRole = client.post("/register") {
             contentType(ContentType.Application.Json)
-            setBody("""{"name":"Wannabe","email":"$email","phone":"0633333333","address":"Street 3","password":"password123","role":"AANBIEDER"}""")
+            setBody("""{"name":"Wannabe","email":"$email","phone":"0633333333","address":"Street 3","password":"password123","role":"OWNER"}""")
         }
         assertEquals(HttpStatusCode.BadRequest, withRole.status)
 
@@ -263,54 +263,54 @@ class AuthorizationTest {
             contentType(ContentType.Application.Json)
             setBody("""{"email":"$email","password":"password123"}""")
         }
-        assertEquals("HUURDER", Json.parseToJsonElement(loginResponse.bodyAsText()).jsonObject["role"]!!.jsonPrimitive.content)
+        assertEquals("RENTER", Json.parseToJsonElement(loginResponse.bodyAsText()).jsonObject["role"]!!.jsonPrimitive.content)
         val token = Json.parseToJsonElement(loginResponse.bodyAsText()).jsonObject["token"]!!.jsonPrimitive.content
         val decoded = JWT.require(Algorithm.HMAC256(SECRET)).withIssuer(ISSUER).withAudience(AUDIENCE).build().verify(token)
-        assertEquals("HUURDER", decoded.getClaim("role").asString())
+        assertEquals("RENTER", decoded.getClaim("role").asString())
 
-        assertEquals(HttpStatusCode.Forbidden, client.get("/aanbieder-only") { bearerAuth(token) }.status)
-        assertEquals(HttpStatusCode.OK, client.get("/huurder-only") { bearerAuth(token) }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.get("/owner-only") { bearerAuth(token) }.status)
+        assertEquals(HttpStatusCode.OK, client.get("/renter-only") { bearerAuth(token) }.status)
     }
 
     @Test
-    fun huurderLoginTokenContainsOnlyStoredRole() = authzTest {
+    fun renterLoginTokenContainsOnlyStoredRole() = authzTest {
         val decoded = JWT.require(Algorithm.HMAC256(SECRET)).withIssuer(ISSUER).withAudience(AUDIENCE).build()
-            .verify(loginToken("huurder@example.com"))
-        assertEquals("HUURDER", decoded.getClaim("role").asString())
-        assertEquals(huurderId, decoded.getClaim("userId").asLong())
+            .verify(loginToken("renter@example.com"))
+        assertEquals("RENTER", decoded.getClaim("role").asString())
+        assertEquals(renterId, decoded.getClaim("userId").asLong())
     }
 
     @Test
     fun roleForgedWithOtherSecretIsRejected() = authzTest {
-        val forged = signedToken(huurderId, "AANBIEDER", secret = "attacker-secret")
-        assertEquals(HttpStatusCode.Unauthorized, client.get("/aanbieder-only") { bearerAuth(forged) }.status)
+        val forged = signedToken(renterId, "OWNER", secret = "attacker-secret")
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/owner-only") { bearerAuth(forged) }.status)
     }
 
     @Test
-    fun unknownOrAliasRoleClaimIsForbidden() = authzTest {
-        for (role in listOf("OWNER", "aanbieder", "ADMIN", "")) {
-            val response = client.get("/aanbieder-only") { bearerAuth(signedToken(aanbiederId, role)) }
+    fun unknownOrMalformedRoleClaimIsForbidden() = authzTest {
+        for (role in listOf("OWNER ", "ADMIN", "")) {
+            val response = client.get("/owner-only") { bearerAuth(signedToken(ownerId, role)) }
             assertEquals(HttpStatusCode.Forbidden, response.status, "role=$role")
         }
     }
 
     @Test
     fun authorizationServiceValidatesPermissions() {
-        // Aanbieder permissions
-        assertTrue(authService.canManageCars(UserRole.AANBIEDER))
-        assertFalse(authService.canManageCars(UserRole.HUURDER))
+        // Owner permissions
+        assertTrue(authService.canManageCars(UserRole.OWNER))
+        assertFalse(authService.canManageCars(UserRole.RENTER))
 
         // Car ownership
-        assertTrue(authService.canManageCar(userId = 10, role = UserRole.AANBIEDER, carOwnerId = 10))
-        assertFalse(authService.canManageCar(userId = 11, role = UserRole.AANBIEDER, carOwnerId = 10))
-        assertFalse(authService.canManageCar(userId = 10, role = UserRole.HUURDER, carOwnerId = 10))
+        assertTrue(authService.canManageCar(userId = 10, role = UserRole.OWNER, carOwnerId = 10))
+        assertFalse(authService.canManageCar(userId = 11, role = UserRole.OWNER, carOwnerId = 10))
+        assertFalse(authService.canManageCar(userId = 10, role = UserRole.RENTER, carOwnerId = 10))
 
         // Cost calculation
-        assertTrue(authService.canCalculateCost(UserRole.AANBIEDER))
-        assertFalse(authService.canCalculateCost(UserRole.HUURDER))
+        assertTrue(authService.canCalculateCost(UserRole.OWNER))
+        assertFalse(authService.canCalculateCost(UserRole.RENTER))
 
         // Reservation permissions
-        assertTrue(authService.canReserveCar(UserRole.HUURDER))
-        assertFalse(authService.canReserveCar(UserRole.AANBIEDER))
+        assertTrue(authService.canReserveCar(UserRole.RENTER))
+        assertFalse(authService.canReserveCar(UserRole.OWNER))
     }
 }

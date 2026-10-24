@@ -93,8 +93,8 @@ fun Route.userRoutes(repository: IUserRepository) {
             }
 
             try {
-                // Self-registration always creates a HUURDER; AANBIEDER is never client-assignable.
-                repository.create(user, UserRole.HUURDER)
+                // Self-registration always creates a renter; an owner role is never client-assignable.
+                repository.create(user, UserRole.RENTER)
             } catch (_: DuplicateEmailException) {
                 return@post call.respond(HttpStatusCode.Conflict, "Email is already registered")
             }

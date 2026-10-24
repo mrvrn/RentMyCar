@@ -16,7 +16,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                 owner = User[car.ownerId]
                 brand = car.brand
                 type = car.type
-                licensePlate = car.licensePlate
+                licensePlate = normalizeLicensePlate(car.licensePlate)
                 pricePerHour = car.pricePerHour
                 pickup = Location[car.pickupId]
                 dropOff = Location[car.dropOffId]

@@ -22,33 +22,33 @@ class AuthorizationService(private val userRepository: IUserRepository) {
     }
 
     /**
-     * Checks if the user is authorized to add, edit or delete cars (Aanbieder only).
+     * Checks if the user is authorized to add, edit, or delete cars (owner only).
      */
-    fun canManageCars(role: UserRole): Boolean = role == UserRole.AANBIEDER
+    fun canManageCars(role: UserRole): Boolean = role == UserRole.OWNER
 
     /**
-     * Checks if the user is authorized to edit or delete a specific car (must be Aanbieder AND the car owner).
+     * Checks if the user is authorized to edit or delete a specific car (must be the owner and the car owner).
      */
     fun canManageCar(userId: Long, role: UserRole, carOwnerId: Long): Boolean =
-        role == UserRole.AANBIEDER && userId == carOwnerId
+        role == UserRole.OWNER && userId == carOwnerId
 
     /**
-     * Checks if the user is authorized to calculate consumption cost or TCO (Aanbieder only).
+     * Checks if the user is authorized to calculate consumption cost or TCO (owner only).
      */
-    fun canCalculateCost(role: UserRole): Boolean = role == UserRole.AANBIEDER
+    fun canCalculateCost(role: UserRole): Boolean = role == UserRole.OWNER
 
     /**
-     * Checks if the user is authorized to reserve cars (Huurder only).
+     * Checks if the user is authorized to reserve cars (renter only).
      */
-    fun canReserveCar(role: UserRole): Boolean = role == UserRole.HUURDER
+    fun canReserveCar(role: UserRole): Boolean = role == UserRole.RENTER
 
     /**
      * Checks if the user can manage or cancel a reservation.
-     * Huurder can manage their own reservation; Aanbieder can manage reservations on their car.
+     * A renter can manage their own reservation; an owner can manage reservations on their car.
      */
     fun canManageReservation(userId: Long, role: UserRole, renterId: Long, carOwnerId: Long): Boolean =
         when (role) {
-            UserRole.HUURDER -> userId == renterId
-            UserRole.AANBIEDER -> userId == carOwnerId
+            UserRole.RENTER -> userId == renterId
+            UserRole.OWNER -> userId == carOwnerId
         }
 }

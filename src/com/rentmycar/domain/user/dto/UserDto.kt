@@ -11,5 +11,5 @@ data class UserDto(
     val phone: String,
     val address: String,
     val bonusPoints: Long?,
-    val role: UserRole = UserRole.HUURDER
+    val role: UserRole = UserRole.RENTER
 )

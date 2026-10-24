@@ -45,13 +45,13 @@ class RegistrationTest {
     }
 
     @Test
-    fun rejectsClientSuppliedAanbiederRole() = checkRegistration(
-        body = """{"name":"Test User","email":"test@example.com","phone":"0612345678","address":"Test Street 1","password":"test-password-123","role":"AANBIEDER"}"""
+    fun rejectsClientSuppliedOwnerRole() = checkRegistration(
+        body = """{"name":"Test User","email":"test@example.com","phone":"0612345678","address":"Test Street 1","password":"test-password-123","role":"OWNER"}"""
     )
 
     @Test
-    fun rejectsClientSuppliedHuurderRole() = checkRegistration(
-        body = """{"name":"Test User","email":"test@example.com","phone":"0612345678","address":"Test Street 1","password":"test-password-123","role":"HUURDER"}"""
+    fun rejectsClientSuppliedRenterRole() = checkRegistration(
+        body = """{"name":"Test User","email":"test@example.com","phone":"0612345678","address":"Test Street 1","password":"test-password-123","role":"RENTER"}"""
     )
 
     @Test
@@ -117,7 +117,7 @@ class RegistrationTest {
         }
         assertEquals(status, response.status)
         assertEquals(saved, repository.received)
-        assertEquals(if (saved != null) UserRole.HUURDER else null, repository.receivedRole)
+        assertEquals(if (saved != null) UserRole.RENTER else null, repository.receivedRole)
         assertFalse(response.bodyAsText().contains(input.password))
         if (duplicate) assertEquals("Email is already registered", response.bodyAsText())
     }
