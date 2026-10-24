@@ -119,7 +119,7 @@ class AuthorizationTest {
                     }
                 }
 
-                // Misconfiguration guard: authorize {} without authenticate {} must fail closed.
+                // authorize {} supplies its own authentication boundary.
                 route("/authorize-without-authenticate") {
                     authorize(UserRole.OWNER) {
                         get {
@@ -237,9 +237,7 @@ class AuthorizationTest {
 
     @Test
     fun authorizeWithoutAuthenticateFailsClosed() = authzTest {
-        val response = client.get("/authorize-without-authenticate") {
-            bearerAuth(signedToken(ownerId, "OWNER"))
-        }
+        val response = client.get("/authorize-without-authenticate")
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertEquals(0, unauthenticatedHandlerCalls.get())
     }

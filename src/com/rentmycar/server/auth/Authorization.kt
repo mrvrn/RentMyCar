@@ -4,6 +4,7 @@ import com.rentmycar.domain.user.UserRole
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.auth.AuthenticationChecked
+import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
@@ -25,10 +26,8 @@ val RoleAuthorizationPlugin = createRouteScopedPlugin(
 ) {
     val allowedRoles = pluginConfig.allowedRoles
     on(AuthenticationChecked) { call ->
-        // Authentication already responded (e.g. 401 challenge).
         if (call.isHandled) return@on
 
-        // Fail closed: no principal means no access, even if authorize {} is used outside authenticate {}.
         if (call.principal<JWTPrincipal>() == null) {
             call.respond(HttpStatusCode.Unauthorized, "Authentication required")
             return@on
@@ -53,9 +52,11 @@ fun Route.authorize(vararg allowedRoles: UserRole, build: Route.() -> Unit): Rou
         override fun toString(): String = "(roles: ${allowedRoles.joinToString()})"
     })
 
-    authorizedRoute.install(RoleAuthorizationPlugin) {
-        this.allowedRoles = allowedRoles.toSet()
+    val authenticatedRoute = authorizedRoute.authenticate("auth-jwt") {
+        install(RoleAuthorizationPlugin) {
+            this.allowedRoles = allowedRoles.toSet()
+        }
+        build()
     }
-    authorizedRoute.build()
-    return authorizedRoute
+    return authenticatedRoute
 }

@@ -6,8 +6,9 @@ import com.rentmycar.domain.auth.AuthorizationService
 import com.rentmycar.domain.user.DuplicateEmailException
 import com.rentmycar.domain.user.IUserRepository
 import com.rentmycar.domain.user.UserRole
-import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.LoginUserDto
+import com.rentmycar.domain.user.dto.CreateUserDto
+import com.rentmycar.domain.user.dto.RegisterUserRequest
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -63,7 +64,7 @@ fun Route.userRoutes(repository: IUserRepository) {
     route("/register") {
         post {
             val input = try {
-                call.receive<CreateUserDto>()
+                call.receive<RegisterUserRequest>()
             } catch (_: BadRequestException) {
                 return@post call.respond(HttpStatusCode.BadRequest, "Invalid registration data")
             }
@@ -72,6 +73,13 @@ fun Route.userRoutes(repository: IUserRepository) {
                 email = input.email.trim(),
                 phone = input.phone.trim(),
                 address = input.address.trim(),
+            )
+            val createUser = CreateUserDto(
+                name = user.name,
+                email = user.email,
+                phone = user.phone,
+                address = user.address,
+                password = user.password,
             )
 
             val error = when {
@@ -94,7 +102,7 @@ fun Route.userRoutes(repository: IUserRepository) {
 
             try {
                 // Self-registration always creates a renter; an owner role is never client-assignable.
-                repository.create(user, UserRole.RENTER)
+                repository.create(createUser, UserRole.RENTER)
             } catch (_: DuplicateEmailException) {
                 return@post call.respond(HttpStatusCode.Conflict, "Email is already registered")
             }
