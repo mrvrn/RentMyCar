@@ -283,6 +283,28 @@ class AuthorizationTest {
     }
 
     @Test
+    fun invalidCarLocationIsRejected() = authzTest {
+        for (request in listOf(carRequest(pickupId = 999), carRequest(dropOffId = 999))) {
+            val response = client.post("/cars") {
+                bearerAuth(loginToken("owner@example.com"))
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+        }
+    }
+
+    @Test
+    fun renterIsRejectedBeforeInvalidLocationValidation() = authzTest {
+        val response = client.post("/cars") {
+            bearerAuth(loginToken("renter@example.com"))
+            contentType(ContentType.Application.Json)
+            setBody(carRequest(pickupId = 999))
+        }
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+    }
+
+    @Test
     fun ownerCannotDeleteAnotherOwnersCar() = authzTest {
         val response = client.delete("/cars/2") {
             bearerAuth(loginToken("owner@example.com"))
@@ -300,15 +322,19 @@ class AuthorizationTest {
         assertFalse(carRepository.contains(1))
     }
 
-    private fun carRequest(requestOwnerId: Long = ownerId): String = Json.encodeToString(
+    private fun carRequest(
+        requestOwnerId: Long = ownerId,
+        pickupId: Long = 1,
+        dropOffId: Long = 1,
+    ): String = Json.encodeToString(
         CreateCarDto(
             ownerId = requestOwnerId,
             brand = "Test",
             type = "Hatchback",
             licensePlate = "AB-123-CD",
             pricePerHour = BigDecimal("19.99"),
-            pickupId = 1,
-            dropOffId = 1,
+            pickupId = pickupId,
+            dropOffId = dropOffId,
             isAvailable = true,
         )
     )
@@ -353,6 +379,14 @@ class AuthorizationTest {
     fun roleForgedWithOtherSecretIsRejected() = authzTest {
         val forged = signedToken(renterId, "OWNER", secret = "attacker-secret")
         assertEquals(HttpStatusCode.Unauthorized, client.get("/owner-only") { bearerAuth(forged) }.status)
+    }
+
+    @Test
+    fun nonPositiveUserIdIsRejected() = authzTest {
+        for (userId in listOf(0L, -1L)) {
+            val token = signedToken(userId, "OWNER")
+            assertEquals(HttpStatusCode.Unauthorized, client.get("/owner-only") { bearerAuth(token) }.status)
+        }
     }
 
     @Test
@@ -405,9 +439,12 @@ private class TestCarRepository : ICarRepository {
 
     override suspend fun delete(id: Long): Boolean = cars.remove(id) != null
 
-    override suspend fun create(createCar: CreateCarDto) {
-        created = createCar
-        cars[3] = carDto(3, createCar.ownerId)
+    override suspend fun create(car: CreateCarDto) {
+        if (car.pickupId != 1L || car.dropOffId != 1L) {
+            throw com.rentmycar.domain.car.InvalidCarLocationException()
+        }
+        created = car
+        cars[3] = carDto(3, car.ownerId)
     }
 
     private fun carDto(id: Long, ownerId: Long) = CarDto(

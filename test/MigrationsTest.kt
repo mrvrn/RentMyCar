@@ -19,6 +19,38 @@ import kotlin.test.assertTrue
 
 class MigrationsTest {
     @Test
+    fun roleMigrationPreservesOwnersAndNormalizesLegacyValues() = withDatabase { settings ->
+        Flyway.configure()
+            .dataSource(settings.url, settings.user, settings.password)
+            .locations("classpath:db/migration")
+            .target("20261013131505919")
+            .load()
+            .migrate()
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("INSERT INTO users (id, name, email, phone, address, password) VALUES (1, 'Owner', 'owner-migration@example.com', '1', 'A', 'hash')")
+                statement.executeUpdate("INSERT INTO users (id, name, email, phone, address, password) VALUES (2, 'Renter', 'renter-migration@example.com', '2', 'B', 'hash')")
+                statement.executeUpdate("INSERT INTO locations (id, streetName, houseNumber, postalCode, city, country, userId) VALUES (1, 'Street', '1', '1234AB', 'City', 'NL', 1)")
+                statement.executeUpdate("INSERT INTO cars (id, ownerId, brand, type, licensePlate, pricePerDay, pickupId, dropOffId) VALUES (1, 1, 'Test', 'Test', 'MIG-1', 19.99, 1, 1)")
+            }
+        }
+
+        assertEquals(5, migrateDatabase(settings).migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT role FROM users ORDER BY id").use { rows ->
+                    assertTrue(rows.next())
+                    assertEquals("OWNER", rows.getString(1))
+                    assertTrue(rows.next())
+                    assertEquals("RENTER", rows.getString(1))
+                    assertTrue(!rows.next())
+                }
+            }
+        }
+        assertEquals(0, migrateDatabase(settings).migrationsExecuted)
+    }
+
+    @Test
     fun priceMigrationUpgradesExistingCarsAndStoresExactDecimals() = withDatabase { settings ->
         Flyway.configure()
             .dataSource(settings.url, settings.user, settings.password)
