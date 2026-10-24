@@ -6,6 +6,7 @@ import com.rentmycar.domain.car.Car
 import com.rentmycar.domain.car.Cars
 import com.rentmycar.domain.rental.dto.CreateRentalDto
 import com.rentmycar.domain.rental.dto.RentalDto
+import com.rentmycar.domain.rental.dto.RentalOverviewDto
 import com.rentmycar.domain.user.User
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.v1.core.*
@@ -33,6 +34,10 @@ internal fun calculateRentalPrice(
 
 class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Rental) {
     override fun toDto(entity: Rental): RentalDto = entity.toDto()
+
+    override suspend fun findAllByUserId(userId: Long): List<RentalOverviewDto> = withTransaction {
+        Rental.find { Rentals.renterId eq userId }.map { it.toOverviewDto() }
+    }
 
     override suspend fun create(
         rental: CreateRentalDto,

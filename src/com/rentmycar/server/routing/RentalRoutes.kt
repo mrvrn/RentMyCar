@@ -7,46 +7,72 @@ import com.rentmycar.domain.rental.dto.ChangeRentalStatusDto
 import io.ktor.server.plugins.BadRequestException
 import com.rentmycar.domain.rental.RentalNotFoundException
 import com.rentmycar.domain.rental.RentalUnavailableException
-import com.rentmycar.domain.rental.dto.CreateRentalDto
+import com.rentmycar.domain.rental.dto.RentalDto
+import com.rentmycar.domain.user.IUserRepository
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 
-fun Route.rentalRoutes(rentalRepository: IRentalRepository) {
+private suspend fun ApplicationCall.rentalOrRespond(
+    rentalRepository: IRentalRepository
+): RentalDto? { // Use the return type of your repository's findById
+    val id = parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
+
+    if (id == null) {
+        respond(HttpStatusCode.BadRequest, "Invalid rental ID")
+        return null
+    }
+
+    val rental = rentalRepository.findById(id)
+
+    if (rental == null) {
+        respond(HttpStatusCode.NotFound, "Rental not found")
+        return null
+    }
+
+    return rental
+}
+
+fun Route.rentalRoutes(rentalRepository: IRentalRepository, userRepository: IUserRepository) {
     authenticate("auth-jwt") {
         route("/rentals") {
-            patch("/{id}/cancel") {
-                val rentalId = call.parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
-                    ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid rental ID")
-
-                val loggedInUserId = call.principal<JWTPrincipal>()
-                    ?.payload?.getClaim("userId")?.asLong()
-                    ?: return@patch call.respond(HttpStatusCode.Unauthorized)
-
-                val rental = try {
-                    rentalRepository.changeStatus(rentalId, RentalStatus.CANCELLED, loggedInUserId)
-                } catch (exception: RentalNotFoundException) {
-                    return@patch call.respond(HttpStatusCode.NotFound, exception.message.orEmpty())
-                } catch (exception: RentalAccessDeniedException) {
-                    return@patch call.respond(HttpStatusCode.Forbidden, exception.message.orEmpty())
-                } catch (exception: RentalUnavailableException) {
-                    return@patch call.respond(HttpStatusCode.Conflict, exception.message.orEmpty())
-                }
-
-                call.respond(HttpStatusCode.OK, rental)
+            get {
+                val loggedInUserId = call.userIdOrRespond(userRepository) ?: return@get
+                return@get call.respond(HttpStatusCode.OK, rentalRepository.findAllByUserId(loggedInUserId))
             }
 
-            patch("/{id}/status") {
-                val rentalId = call.parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
-                    ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid rental ID")
+            route("/{id}") {
+                get {
+                    val rental = call.rentalOrRespond(rentalRepository) ?: return@get
+                    return@get call.respond(HttpStatusCode.OK, rental)
+                }
 
-                val loggedInUserId = call.principal<JWTPrincipal>()
-                    ?.payload?.getClaim("userId")?.asLong()
-                    ?: return@patch call.respond(HttpStatusCode.Unauthorized)
+                patch("/cancel") {
+                    val rentalDto = call.rentalOrRespond(rentalRepository) ?: return@patch
+                    val loggedInUserId = call.userIdOrRespond(userRepository) ?: return@patch
+
+                    val rental = try {
+                        rentalRepository.changeStatus(rentalDto.id, RentalStatus.CANCELLED, loggedInUserId)
+                    } catch (exception: RentalNotFoundException) {
+                        return@patch call.respond(HttpStatusCode.NotFound, exception.message.orEmpty())
+                    } catch (exception: RentalAccessDeniedException) {
+                        return@patch call.respond(HttpStatusCode.Forbidden, exception.message.orEmpty())
+                    } catch (exception: RentalUnavailableException) {
+                        return@patch call.respond(HttpStatusCode.Conflict, exception.message.orEmpty())
+                    }
+
+                    call.respond(HttpStatusCode.OK, rental)
+                }
+            }
+
+
+
+            patch("/{id}/status") {
+                val rentalDto = call.rentalOrRespond(rentalRepository) ?: return@patch
+                val loggedInUserId = call.userIdOrRespond(userRepository) ?: return@patch
 
                 val input = try {
                     call.receive<ChangeRentalStatusDto>()
@@ -59,7 +85,7 @@ fun Route.rentalRoutes(rentalRepository: IRentalRepository) {
                 }
 
                 val rental = try {
-                    rentalRepository.changeStatus(rentalId, input.status, loggedInUserId)
+                    rentalRepository.changeStatus(rentalDto.id, input.status, loggedInUserId)
                 } catch (exception: RentalNotFoundException) {
                     return@patch call.respond(HttpStatusCode.NotFound, exception.message.orEmpty())
                 } catch (exception: RentalAccessDeniedException) {
@@ -71,28 +97,6 @@ fun Route.rentalRoutes(rentalRepository: IRentalRepository) {
                 }
 
                 call.respond(HttpStatusCode.OK, rental)
-            }
-
-            post("/{id}") {
-                val carId = call.parameters["id"]?.toLongOrNull()
-                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid car ID")
-
-                val renterId = call.principal<JWTPrincipal>()
-                    ?.payload?.getClaim("userId")?.asLong()
-                    ?: return@post call.respond(HttpStatusCode.Unauthorized)
-
-                val input = call.receive<CreateRentalDto>()
-
-                val rental = try {
-                    rentalRepository.create(input, renterId, carId)
-                } catch (exception: RentalNotFoundException) {
-                    return@post call.respond(HttpStatusCode.NotFound, exception.message.orEmpty())
-                } catch (exception: RentalUnavailableException) {
-                    return@post call.respond(HttpStatusCode.Conflict, exception.message.orEmpty())
-                } catch (exception: IllegalArgumentException) {
-                    return@post call.respond(HttpStatusCode.BadRequest, exception.message.orEmpty())
-                }
-                call.respond(HttpStatusCode.Created, rental)
             }
         }
     }

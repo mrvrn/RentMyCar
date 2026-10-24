@@ -11,8 +11,8 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     routing {
-        carRoutes(CarRepository())
+        carRoutes(CarRepository(), RentalRepository(), UserRepository())
         userRoutes(UserRepository())
-        rentalRoutes(RentalRepository())
+        rentalRoutes(RentalRepository(), UserRepository())
     }
 }
