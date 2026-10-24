@@ -26,6 +26,7 @@ class User(id: EntityID<Long>) : LongEntity(id) {
     var address by Users.address
     var bonusPoints by Users.bonusPoints
     var password by Users.password
+    var role by Users.role
 
     val cars by Car referrersOn Cars.ownerId // make sure to use val and referrersOn
     val locations by Location referrersOn Locations.userId

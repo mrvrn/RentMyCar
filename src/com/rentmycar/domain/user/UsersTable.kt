@@ -9,4 +9,5 @@ object Users : LongIdTable("users") {
     val address = varchar("address", 100)
     val bonusPoints = long("bonusPoints").nullable()
     val password = varchar("password", 100)
+    val role = enumerationByName("role", 50, UserRole::class).default(UserRole.RENTER)
 }

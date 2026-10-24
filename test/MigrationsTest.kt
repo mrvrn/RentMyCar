@@ -33,7 +33,7 @@ class MigrationsTest {
                 statement.executeUpdate("INSERT INTO cars (id, ownerId, brand, type, licensePlate, pricePerDay, pickupId, dropOffId) VALUES (1, 1, 'Test', 'Test', 'TEST-1', 19.99, 1, 1)")
             }
         }
-        assertEquals(1, migrateDatabase(settings).migrationsExecuted)
+        assertEquals(3, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT pricePerDay FROM cars WHERE id = 1").use { rows ->

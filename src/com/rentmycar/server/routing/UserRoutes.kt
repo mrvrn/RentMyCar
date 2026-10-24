@@ -5,8 +5,10 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.rentmycar.domain.auth.AuthorizationService
 import com.rentmycar.domain.user.DuplicateEmailException
 import com.rentmycar.domain.user.IUserRepository
-import com.rentmycar.domain.user.dto.CreateUserDto
+import com.rentmycar.domain.user.UserRole
 import com.rentmycar.domain.user.dto.LoginUserDto
+import com.rentmycar.domain.user.dto.CreateUserDto
+import com.rentmycar.domain.user.dto.RegisterUserRequest
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -62,7 +64,7 @@ fun Route.userRoutes(repository: IUserRepository) {
     route("/register") {
         post {
             val input = try {
-                call.receive<CreateUserDto>()
+                call.receive<RegisterUserRequest>()
             } catch (_: BadRequestException) {
                 return@post call.respond(HttpStatusCode.BadRequest, "Invalid registration data")
             }
@@ -71,6 +73,13 @@ fun Route.userRoutes(repository: IUserRepository) {
                 email = input.email.trim(),
                 phone = input.phone.trim(),
                 address = input.address.trim(),
+            )
+            val createUser = CreateUserDto(
+                name = user.name,
+                email = user.email,
+                phone = user.phone,
+                address = user.address,
+                password = user.password,
             )
 
             val error = when {
@@ -92,7 +101,8 @@ fun Route.userRoutes(repository: IUserRepository) {
             }
 
             try {
-                repository.create(user)
+                // Self-registration always creates a renter; an owner role is never client-assignable.
+                repository.create(createUser, UserRole.RENTER)
             } catch (_: DuplicateEmailException) {
                 return@post call.respond(HttpStatusCode.Conflict, "Email is already registered")
             }
@@ -110,10 +120,11 @@ fun Route.userRoutes(repository: IUserRepository) {
                 .withAudience(audience)
                 .withIssuer(issuer)
                 .withClaim("userId", user.id.value)
+                .withClaim("role", user.role.name)
                 .withExpiresAt(Date(System.currentTimeMillis() + 60 * 60 * 1000)) // 1 hour
                 .sign(Algorithm.HMAC256(secret))
 
-            call.respond(mapOf("token" to token))
+            call.respond(mapOf("token" to token, "role" to user.role.name))
         }
     }
 
