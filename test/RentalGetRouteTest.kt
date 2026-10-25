@@ -152,7 +152,7 @@ class RentalGetRouteTest {
         override suspend fun findById(id: Long): UserDto? =
             if (id in 7L..9L) UserDto(id, "Test User", "test@example.com", "", "", 0L) else null
         override suspend fun delete(id: Long): Boolean = error("Unexpected deletion")
-        override suspend fun create(user: CreateUserDto): Unit = error("Unexpected creation")
+        override suspend fun create(user: CreateUserDto, role: com.rentmycar.domain.user.UserRole): Unit = error("Unexpected creation")
         override suspend fun findByEmail(email: String): User? = error("Unexpected lookup")
     }
 }

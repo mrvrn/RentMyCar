@@ -19,7 +19,42 @@ import kotlin.test.assertTrue
 
 class MigrationsTest {
     @Test
-    fun `price migration upgrades existing cars and stores exact decimals`() = withDatabase { settings ->
+    fun roleMigrationPreservesOwnersAndNormalizesLegacyValues() = withDatabase { settings ->
+        Flyway.configure()
+            .dataSource(settings.url, settings.user, settings.password)
+            .locations("classpath:db/migration")
+            .target("20261013131505919")
+            .load()
+            .migrate()
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("INSERT INTO users (id, name, email, phone, address, password) VALUES (1, 'Owner', 'owner-migration@example.com', '1', 'A', 'hash')")
+                statement.executeUpdate("INSERT INTO users (id, name, email, phone, address, password) VALUES (2, 'Renter', 'renter-migration@example.com', '2', 'B', 'hash')")
+                statement.executeUpdate("INSERT INTO locations (id, streetName, houseNumber, postalCode, city, country, userId) VALUES (1, 'Street', '1', '1234AB', 'City', 'NL', 1)")
+                statement.executeUpdate("INSERT INTO cars (id, ownerId, brand, type, licensePlate, pricePerDay, pickupId, dropOffId) VALUES (1, 1, 'Test', 'Test', 'MIG-1', 19.99, 1, 1)")
+            }
+        }
+
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261013131505919" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT role FROM users ORDER BY id").use { rows ->
+                    assertTrue(rows.next())
+                    assertEquals("OWNER", rows.getString(1))
+                    assertTrue(rows.next())
+                    assertEquals("RENTER", rows.getString(1))
+                    assertTrue(!rows.next())
+                }
+            }
+        }
+        assertEquals(0, migrateDatabase(settings).migrationsExecuted)
+    }
+
+    @Test
+    fun priceMigrationUpgradesExistingCarsAndStoresExactDecimals() = withDatabase { settings ->
         Flyway.configure()
             .dataSource(settings.url, settings.user, settings.password)
             .locations("classpath:db/migration")
@@ -33,10 +68,11 @@ class MigrationsTest {
                 statement.executeUpdate("INSERT INTO cars (id, ownerId, brand, type, licensePlate, pricePerDay, pickupId, dropOffId) VALUES (1, 1, 'Test', 'Test', 'TEST-1', 19.99, 1, 1)")
             }
         }
-        val remainingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
             .listDirectoryEntries("V*__*.sql")
-            .count { it.fileName.toString().substringBefore("__").removePrefix("V") > "20261013131505919" }
-        assertEquals(remainingMigrations, migrateDatabase(settings).migrationsExecuted)
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261013131505919" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
+        assertEquals(0, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT pricePerHour FROM cars WHERE id = 1").use { rows ->
@@ -59,6 +95,54 @@ class MigrationsTest {
             }
         }
         assertEquals(0, migrateDatabase(settings).migrationsExecuted)
+    }
+
+    @Test
+    fun priceRenameMigrationSkipsAlreadyRenamedColumn() = withDatabase { settings ->
+        Flyway.configure()
+            .dataSource(settings.url, settings.user, settings.password)
+            .locations("classpath:db/migration")
+            .target("20261022000000001")
+            .load()
+            .migrate()
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261022000000001" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.metaData.getColumns(connection.catalog, null, "cars", "pricePer%").use { rows ->
+                assertTrue(rows.next())
+                assertEquals("pricePerHour", rows.getString("COLUMN_NAME"))
+                assertTrue(!rows.next())
+            }
+        }
+    }
+
+    @Test
+    fun uniqueLicensePlateIndexRejectsDuplicatesAndSkipsExistingIndex() = withDatabase { settings ->
+        Flyway.configure()
+            .dataSource(settings.url, settings.user, settings.password)
+            .locations("classpath:db/migration")
+            .target("20261022180000000")
+            .load()
+            .migrate()
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { it.executeUpdate("ALTER TABLE cars ADD UNIQUE INDEX idx_unique_license_plate (licensePlate)") }
+        }
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261022180000000" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("INSERT INTO users (id, name, email, phone, address, password) VALUES (1, 'Test', 'test@example.com', '123', 'Test address', 'test hash')")
+                statement.executeUpdate("INSERT INTO locations (id, streetName, houseNumber, postalCode, city, country, userId) VALUES (1, 'Test street', '1', '1234AB', 'Test city', 'NL', 1)")
+                statement.executeUpdate("INSERT INTO cars (ownerId, brand, type, licensePlate, pricePerHour, pickupId, dropOffId) VALUES (1, 'Test', 'Test', 'DUP-1', 10.00, 1, 1)")
+                assertFailsWith<java.sql.SQLIntegrityConstraintViolationException> {
+                    statement.executeUpdate("INSERT INTO cars (ownerId, brand, type, licensePlate, pricePerHour, pickupId, dropOffId) VALUES (1, 'Test', 'Test', 'DUP-1', 12.00, 1, 1)")
+                }
+            }
+        }
     }
 
     private class Notes(withSummary: Boolean = false) : Table("test_notes") {

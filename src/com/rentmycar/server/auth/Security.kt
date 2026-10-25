@@ -25,7 +25,8 @@ fun Application.configureSecurity() {
                     .build()
             )
             validate { credential ->
-                if (credential.payload.getClaim("userId").asLong() != null) {
+                val userId = credential.payload.getClaim("userId").asLong()
+                if (userId != null && userId > 0) {
                     JWTPrincipal(credential.payload)
                 } else null
             }

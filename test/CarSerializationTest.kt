@@ -40,7 +40,7 @@ class CarSerializationTest {
 
     @Test
     fun `create car price round trips without precision loss`() {
-        val car = CreateCarDto(1, "Ford", "Puma", "TEST-PUMA",
+        val car = CreateCarDto("Ford", "Puma", "TEST-PUMA",
             "12345678901234567890.123456789".toBigDecimal(), 1, 1)
         assertEquals(car, Json.decodeFromString<CreateCarDto>(Json.encodeToString(car)))
     }
@@ -48,7 +48,7 @@ class CarSerializationTest {
     @Test
     fun `create car accepts numeric price`() {
         val car = Json.decodeFromString<CreateCarDto>(
-            """{"ownerId":1,"brand":"Ford","type":"Puma","licensePlate":"TEST-PUMA","pricePerHour":12.50,"pickupId":1,"dropOffId":1}"""
+            """{"brand":"Ford","type":"Puma","licensePlate":"TEST-PUMA","pricePerHour":12.50,"pickupId":1,"dropOffId":1}"""
         )
         assertEquals("12.50".toBigDecimal(), car.pricePerHour)
     }

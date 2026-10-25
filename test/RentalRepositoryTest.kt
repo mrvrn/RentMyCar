@@ -68,7 +68,7 @@ class RentalRepositoryTest {
                     this.owner = owner
                     brand = "Test"
                     type = "Car"
-                    licensePlate = "AB-12-CD"
+                    licensePlate = "TEST-${owner.id.value}"
                     pricePerHour = BigDecimal("12.50")
                     pickup = location
                     dropOff = location

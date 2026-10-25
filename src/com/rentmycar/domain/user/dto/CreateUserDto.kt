@@ -8,5 +8,14 @@ data class CreateUserDto(
     val email: String,
     val phone: String,
     val address: String,
-    val password: String
+    val password: String,
+)
+
+@Serializable
+data class RegisterUserRequest(
+    val name: String,
+    val email: String,
+    val phone: String,
+    val address: String,
+    val password: String,
 )

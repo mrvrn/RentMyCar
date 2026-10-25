@@ -3,6 +3,7 @@ package test
 import com.rentmycar.domain.user.DuplicateEmailException
 import com.rentmycar.domain.user.IUserRepository
 import com.rentmycar.domain.user.User
+import com.rentmycar.domain.user.UserRole
 import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.UserDto
 import com.rentmycar.server.auth.configureSecurity
@@ -44,7 +45,17 @@ class RegistrationTest {
     }
 
     @Test
-    fun `rejects missing fields`() = checkRegistration(body = "{}")
+    fun rejectsClientSuppliedOwnerRole() = checkRegistration(
+        body = """{"name":"Test User","email":"test@example.com","phone":"0612345678","address":"Test Street 1","password":"test-password-123","role":"OWNER"}"""
+    )
+
+    @Test
+    fun rejectsClientSuppliedRenterRole() = checkRegistration(
+        body = """{"name":"Test User","email":"test@example.com","phone":"0612345678","address":"Test Street 1","password":"test-password-123","role":"RENTER"}"""
+    )
+
+    @Test
+    fun rejectsMissingFields() = checkRegistration(body = "{}")
 
     @Test
     fun `rejects malformed json`() = checkRegistration(body = "{")
@@ -106,6 +117,7 @@ class RegistrationTest {
         }
         assertEquals(status, response.status)
         assertEquals(saved, repository.received)
+        assertEquals(if (saved != null) UserRole.RENTER else null, repository.receivedRole)
         assertFalse(response.bodyAsText().contains(input.password))
         if (duplicate) assertEquals("Email is already registered", response.bodyAsText())
     }
@@ -113,9 +125,11 @@ class RegistrationTest {
     // Only creation is needed: registration must not require a user lookup or JWT.
     private class RegistrationRepository(private val duplicate: Boolean) : IUserRepository {
         var received: CreateUserDto? = null
+        var receivedRole: UserRole? = null
 
-        override suspend fun create(user: CreateUserDto) {
+        override suspend fun create(user: CreateUserDto, role: UserRole) {
             received = user
+            receivedRole = role
             if (duplicate) throw DuplicateEmailException(IllegalStateException("Duplicate test email"))
         }
 

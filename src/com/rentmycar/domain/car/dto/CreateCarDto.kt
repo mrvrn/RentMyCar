@@ -1,12 +1,10 @@
 package com.rentmycar.domain.car.dto
 
-import com.rentmycar.server.serialization.BigDecimalSerializer
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
 @Serializable
 data class CreateCarDto(
-    val ownerId: Long,
     val brand: String,
     val type: String,
     val licensePlate: String,

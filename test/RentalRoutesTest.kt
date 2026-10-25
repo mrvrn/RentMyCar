@@ -219,7 +219,7 @@ class RentalRoutesTest {
         override fun toDto(entity: User): UserDto = error("Unexpected mapping")
         override suspend fun findAll(): List<UserDto> = error("Unexpected lookup")
         override suspend fun delete(id: Long): Boolean = error("Unexpected deletion")
-        override suspend fun create(user: CreateUserDto): Unit = error("Unexpected creation")
+        override suspend fun create(user: CreateUserDto, role: com.rentmycar.domain.user.UserRole): Unit = error("Unexpected creation")
         override suspend fun findByEmail(email: String): User? = error("Unexpected lookup")
     }
 
@@ -234,7 +234,8 @@ class RentalRoutesTest {
         override fun toDto(entity: Car): CarDto = error("Unexpected mapping")
         override suspend fun findAll(): List<CarDto> = error("Unexpected lookup")
         override suspend fun delete(id: Long): Boolean = error("Unexpected deletion")
-        override suspend fun create(car: CreateCarDto): Unit = error("Unexpected creation")
+        override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto = error("Unexpected creation")
+        override suspend fun update(id: Long, car: com.rentmycar.domain.car.dto.UpdateCarDto): CarDto? = error("Unexpected update")
     }
 
     private class RecordingRepository(target: RentalStatus, private val failure: RuntimeException?) : IRentalRepository {
