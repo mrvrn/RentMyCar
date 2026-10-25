@@ -106,6 +106,11 @@
       "type": "string"
     },
     {
+      "key": "knownLicensePlate",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "unavailableCarId",
       "value": "",
       "type": "string"
@@ -273,6 +278,7 @@
               "  pm.test('Car is available', () => pm.expect(data.isAvailable).to.eql(true));",
               "  pm.test('Hourly price is valid', () => pm.expect(data.pricePerHour).to.be.a('number').and.at.least(0));",
               "  pm.collectionVariables.set('pricePerHourCents', Math.round(data.pricePerHour * 100));",
+              "  pm.collectionVariables.set('knownLicensePlate', data.licensePlate);",
               "}"
             ]
           }
@@ -3007,7 +3013,328 @@
       ]
     },
     {
-      "name": "73 Reject malformed startAt",
+      "name": "73 Reject car update by another owner",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{carId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{strangerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"Forbidden update\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "74 Reject car deletion by another owner",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/{{carId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{strangerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "75 Reject unknown car lookup",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/9223372036854775807",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "76 Reject malformed car lookup",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/abc",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "77 Reject car with empty brand",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"\",\n  \"type\": \"Test\",\n  \"licensePlate\": \"POSTMAN-BLANK\",\n  \"pricePerHour\": 10,\n  \"pickupId\": 1,\n  \"dropOffId\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "78 Reject duplicate car license plate",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"Duplicate\",\n  \"type\": \"Test\",\n  \"licensePlate\": \"{{knownLicensePlate}}\",\n  \"pricePerHour\": 10,\n  \"pickupId\": 1,\n  \"dropOffId\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "79 Calculate consumption cost as owner",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{carId}}/consumption-cost",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "80 Reject consumption cost for renter",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{carId}}/consumption-cost",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "81 Reject consumption cost without token",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{carId}}/consumption-cost",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "82 Calculate TCO as owner",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{carId}}/tco?kmPerYear=12000",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "83 Reject malformed startAt",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{carId}}/rental",
@@ -3051,7 +3378,7 @@
       ]
     },
     {
-      "name": "74 Reject malformed endAt",
+      "name": "84 Reject malformed endAt",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{carId}}/rental",
@@ -3095,7 +3422,7 @@
       ]
     },
     {
-      "name": "75 Register unrelated user",
+      "name": "85 Register unrelated user",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -3142,7 +3469,7 @@
       ]
     },
     {
-      "name": "76 Login unrelated user",
+      "name": "86 Login unrelated user",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3183,7 +3510,7 @@
       ]
     },
     {
-      "name": "77 Reject unrelated user reading rental",
+      "name": "87 Reject unrelated user reading rental",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals/{{rentalId}}",
@@ -3213,7 +3540,7 @@
       ]
     },
     {
-      "name": "78 Reject unrelated user cancelling rental",
+      "name": "88 Reject unrelated user cancelling rental",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
@@ -3243,7 +3570,7 @@
       ]
     },
     {
-      "name": "79 Reject unrelated user deciding rental",
+      "name": "89 Reject unrelated user deciding rental",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
@@ -3287,7 +3614,7 @@
       ]
     },
     {
-      "name": "80 Unrelated user list excludes all renter reservations",
+      "name": "90 Unrelated user list excludes all renter reservations",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals",
@@ -3317,7 +3644,7 @@
       ]
     },
     {
-      "name": "81 Reject malformed token on profile",
+      "name": "91 Reject malformed token on profile",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/users/{{userId}}",
@@ -3356,7 +3683,7 @@
       ]
     },
     {
-      "name": "82 Reject malformed token on rental list",
+      "name": "92 Reject malformed token on rental list",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals",
@@ -3395,7 +3722,7 @@
       ]
     },
     {
-      "name": "83 Reject malformed token on rental details",
+      "name": "93 Reject malformed token on rental details",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals/{{rentalId}}",
@@ -3434,7 +3761,7 @@
       ]
     },
     {
-      "name": "84 Reject malformed token on booking",
+      "name": "94 Reject malformed token on booking",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{carId}}/rental",
@@ -3487,7 +3814,7 @@
       ]
     },
     {
-      "name": "85 Reject malformed token on cancellation",
+      "name": "95 Reject malformed token on cancellation",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
@@ -3526,7 +3853,7 @@
       ]
     },
     {
-      "name": "86 Reject malformed token on owner decision",
+      "name": "96 Reject malformed token on owner decision",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
@@ -3579,7 +3906,7 @@
       ]
     },
     {
-      "name": "87 Reject token with tampered signature",
+      "name": "97 Reject token with tampered signature",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals",
@@ -3620,7 +3947,7 @@
       ]
     },
     {
-      "name": "88 Reject unavailable car booking (optional)",
+      "name": "98 Reject unavailable car booking (optional)",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{unavailableCarId}}/rental",

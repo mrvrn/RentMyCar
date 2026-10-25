@@ -84,7 +84,7 @@ fun Route.userRoutes(repository: IUserRepository) {
                 // Self-registration always creates a renter; an owner role is never client-assignable.
                 repository.create(createUser, UserRole.RENTER)
             } catch (_: DuplicateEmailException) {
-                // Send the same acknowledgement without changing the existing account.
+                // Do not disclose whether an email address is registered.
             }
             call.respond(HttpStatusCode.OK, "Registration request processed.")
         }
@@ -114,6 +114,21 @@ fun Route.userRoutes(repository: IUserRepository) {
                 HttpStatusCode.NotImplemented,
                 "Server-side logout is not implemented. Discard the token on the client; it remains valid until expiry."
             )
+        }
+    }
+
+    authorize(UserRole.RENTER) {
+        get("/users/{id}") {
+            val requestedId = call.parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
+            val authenticatedId = call.authenticatedUserId()
+                ?: return@get call.respond(HttpStatusCode.Unauthorized, "Authentication required")
+            if (authenticatedId != requestedId) {
+                return@get call.respond(HttpStatusCode.Forbidden, "Access denied")
+            }
+            val user = repository.findById(requestedId)
+                ?: return@get call.respond(HttpStatusCode.NotFound, "User not found")
+            call.respond(HttpStatusCode.OK, user)
         }
     }
 }

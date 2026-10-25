@@ -17,4 +17,7 @@ object Cars : LongIdTable("cars") {
     val dropOffId = reference("dropOffId", Locations.id)
     val pictures = json<List<String>>("pictures", Json.Default).nullable()
     val isAvailable = bool("isAvailable").default(false)
+    val category = varchar("category", 10).default("ICE")
+    val fuelType = varchar("fuelType", 20).nullable()
+    val consumptionPer100Km = decimal("consumptionPer100Km", 6, 2).nullable()
 }

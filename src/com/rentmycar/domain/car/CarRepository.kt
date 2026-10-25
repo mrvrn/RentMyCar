@@ -28,20 +28,20 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     }
 
     override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto {
-        require(car.pricePerHour.signum() >= 0) { "Hourly rate must not be negative" }
+        if (car.pricePerHour.signum() < 0) invalidCar("Hourly rate must not be negative")
         try {
             return withTransaction {
                 val normalizedPlate = car.licensePlate.trim().uppercase(Locale.ROOT)
                 if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
-                    throw DuplicateLicensePlateException(IllegalStateException("Dit kenteken is al in gebruik"))
+                    throw DuplicateLicensePlateException(IllegalStateException("This license plate is already in use"))
                 }
 
                 val ownerUser = User.findById(ownerId)
-                    ?: throw IllegalArgumentException("Eigenaar niet gevonden")
+                    ?: throw IllegalArgumentException("Owner not found")
                 val pickupLocation = Location.findById(car.pickupId)
-                    ?: throw IllegalArgumentException("Ophaallocatie met ID ${car.pickupId} bestaat niet")
+                    ?: throw IllegalArgumentException("Pickup location with ID ${car.pickupId} does not exist")
                 val dropOffLocation = Location.findById(car.dropOffId)
-                    ?: throw IllegalArgumentException("Inleverlocatie met ID ${car.dropOffId} bestaat niet")
+                    ?: throw IllegalArgumentException("Drop-off location with ID ${car.dropOffId} does not exist")
 
                 toDto(Car.new {
                     owner = ownerUser
@@ -53,6 +53,9 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                     dropOff = dropOffLocation
                     pictures = car.pictures
                     isAvailable = car.isAvailable
+                    category = car.category.name
+                    fuelType = car.fuelType
+                    consumptionPer100Km = car.consumptionPer100Km
                 })
             }
         } catch (exception: SQLException) {
@@ -64,6 +67,9 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
         }
     }
 
+    /** Stops car validation immediately when the input cannot be persisted safely. */
+    private fun invalidCar(message: String): Nothing = throw IllegalArgumentException(message)
+
     override suspend fun update(id: Long, car: UpdateCarDto): CarDto? {
         try {
             return withTransaction {
@@ -73,7 +79,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                     val normalizedPlate = newPlate.trim().uppercase(Locale.ROOT)
                     if (normalizedPlate != existing.licensePlate) {
                         if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
-                            throw DuplicateLicensePlateException(IllegalStateException("Dit kenteken is al in gebruik"))
+                            throw DuplicateLicensePlateException(IllegalStateException("This license plate is already in use"))
                         }
                         existing.licensePlate = normalizedPlate
                     }
@@ -82,11 +88,14 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                 car.type?.let { existing.type = it }
                 car.pricePerHour?.let { existing.pricePerHour = it }
                 car.pickupId?.let { existing.pickup = Location.findById(it)
-                    ?: throw IllegalArgumentException("Ophaallocatie met ID $it bestaat niet") }
+                    ?: throw IllegalArgumentException("Pickup location with ID $it does not exist") }
                 car.dropOffId?.let { existing.dropOff = Location.findById(it)
-                    ?: throw IllegalArgumentException("Inleverlocatie met ID $it bestaat niet") }
+                    ?: throw IllegalArgumentException("Drop-off location with ID $it does not exist") }
                 car.pictures?.let { existing.pictures = it }
                 car.isAvailable?.let { existing.isAvailable = it }
+                car.category?.let { existing.category = it.name }
+                if (car.fuelType != null) existing.fuelType = car.fuelType
+                if (car.consumptionPer100Km != null) existing.consumptionPer100Km = car.consumptionPer100Km
                 toDto(existing)
             }
         } catch (exception: SQLException) {

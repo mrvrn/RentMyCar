@@ -49,7 +49,7 @@ const optionalCancellation = (variable, status) => ({
 });
 const collection = {
   info: { name: 'RentMyCar API tests', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json', description: 'Run in order. Requires an existing available car. Creates persistent users and rentals. See the accompanying README.' },
-  variable: Object.entries({ baseUrl: 'http://localhost:8080', carId: '1', email: '', password: 'PostmanTest123!', token: '', ownerEmail: '', ownerPassword: '', ownerToken: '', startAt: '', endAt: '', rentalId: '', rejectedRentalId: '', cancelledAt: '', activeRentalId: '', completedRentalId: '', userId: '', strangerEmail: '', strangerToken: '', invalidToken: 'invalid.jwt.token', pricePerHourCents: '', unavailableCarId: '' }).map(([key, value]) => ({ key, value, type: 'string' })),
+  variable: Object.entries({ baseUrl: 'http://localhost:8080', carId: '1', email: '', password: 'PostmanTest123!', token: '', ownerEmail: '', ownerPassword: '', ownerToken: '', startAt: '', endAt: '', rentalId: '', rejectedRentalId: '', cancelledAt: '', activeRentalId: '', completedRentalId: '', userId: '', strangerEmail: '', strangerToken: '', invalidToken: 'invalid.jwt.token',   pricePerHourCents: '', knownLicensePlate: '', unavailableCarId: '' }).map(([key, value]) => ({ key, value, type: 'string' })),
   item: [
     request('01 Register a new user', '/register', user, 200, { pre: `pm.collectionVariables.set('email', 'postman.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');
 pm.collectionVariables.unset('token');
@@ -77,6 +77,7 @@ pm.collectionVariables.unset('cancelledAt');` }),
   pm.test('Car is available', () => pm.expect(data.isAvailable).to.eql(true));
   pm.test('Hourly price is valid', () => pm.expect(data.pricePerHour).to.be.a('number').and.at.least(0));
   pm.collectionVariables.set('pricePerHourCents', Math.round(data.pricePerHour * 100));
+  pm.collectionVariables.set('knownLicensePlate', data.licensePlate);
 }` }),
     request('04 Create rental through car route', createUrl, rental, 201, { auth: true, pre: `const start = new Date(Date.now() + 7 * 86400000);
 start.setUTCHours(10, 0, 0, 0);
@@ -312,6 +313,30 @@ add('Reject missing registration fields', '/register', {}, 400);
 add('Reject missing car lookup', '/cars/9223372036854775807', null, 404, { method: 'GET' });
 add('Reject booking a missing car', '/cars/9223372036854775807/rental',
   rental, 404, { auth: true });
+add('Reject car update by another owner', '/cars/{{carId}}', { brand: 'Forbidden update' }, 403, { method: 'PUT', auth: 'stranger' });
+add('Reject car deletion by another owner', '/cars/{{carId}}', null, 403, { method: 'DELETE', auth: 'stranger' });
+add('Reject unknown car lookup', '/cars/9223372036854775807', null, 404, { method: 'GET' });
+add('Reject malformed car lookup', '/cars/abc', null, 400, { method: 'GET' });
+add('Reject car with empty brand', '/cars', {
+  brand: '',
+  type: 'Test',
+  licensePlate: 'POSTMAN-BLANK',
+  pricePerHour: 10,
+  pickupId: 1,
+  dropOffId: 1
+}, 400, { auth: 'owner' });
+add('Reject duplicate car license plate', '/cars', {
+  brand: 'Duplicate',
+  type: 'Test',
+  licensePlate: '{{knownLicensePlate}}',
+  pricePerHour: 10,
+  pickupId: 1,
+  dropOffId: 1
+}, 409, { auth: 'owner' });
+add('Calculate consumption cost as owner', '/cars/{{carId}}/consumption-cost', null, 200, { method: 'GET', auth: 'owner' });
+add('Reject consumption cost for renter', '/cars/{{carId}}/consumption-cost', null, 403, { method: 'GET', auth: true });
+add('Reject consumption cost without token', '/cars/{{carId}}/consumption-cost', null, 401, { method: 'GET' });
+add('Calculate TCO as owner', '/cars/{{carId}}/tco?kmPerYear=12000', null, 200, { method: 'GET', auth: 'owner' });
 for (const field of ['startAt', 'endAt']) {
   add(`Reject malformed ${field}`, createUrl, { ...rental, [field]: 'invalid-date' }, 400, { auth: true });
 }

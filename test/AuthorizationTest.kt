@@ -141,7 +141,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun loginReturnsJwtWithRoleClaim() = authzTest {
+    fun `login returns jwt with role claim`() = authzTest {
         val response = client.post("/login") {
             contentType(ContentType.Application.Json)
             setBody("""{"email":"owner@example.com","password":"password123"}""")
@@ -164,7 +164,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun ownerCanAccessOwnerRoute() = authzTest {
+    fun `owner can access owner route`() = authzTest {
         val loginRes = client.post("/login") {
             contentType(ContentType.Application.Json)
             setBody("""{"email":"owner@example.com","password":"password123"}""")
@@ -179,7 +179,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun renterCannotAccessOwnerRouteGetsForbidden() = authzTest {
+    fun `renter cannot access owner route gets forbidden`() = authzTest {
         val loginRes = client.post("/login") {
             contentType(ContentType.Application.Json)
             setBody("""{"email":"renter@example.com","password":"password123"}""")
@@ -193,7 +193,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun renterCanAccessRenterRoute() = authzTest {
+    fun `renter can access renter route`() = authzTest {
         val loginRes = client.post("/login") {
             contentType(ContentType.Application.Json)
             setBody("""{"email":"renter@example.com","password":"password123"}""")
@@ -208,7 +208,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun unauthenticatedRequestGetsUnauthorized() = authzTest {
+    fun `unauthenticated request gets unauthorized`() = authzTest {
         val response = client.get("/owner-only")
         assertEquals(HttpStatusCode.Unauthorized, response.status)
     }
@@ -231,7 +231,7 @@ class AuthorizationTest {
         .sign(Algorithm.HMAC256(secret))
 
     @Test
-    fun forbiddenRequestDoesNotExecuteProtectedHandler() = authzTest {
+    fun `forbidden request does not execute protected handler`() = authzTest {
         val token = loginToken("renter@example.com")
         val before = ownerHandlerCalls.get()
 
@@ -243,14 +243,14 @@ class AuthorizationTest {
     }
 
     @Test
-    fun authorizeRejectsUnauthenticatedRequests() = authzTest {
+    fun `authorize rejects unauthenticated requests`() = authzTest {
         val response = client.get("/authorize-without-authenticate")
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertEquals(0, unauthenticatedHandlerCalls.get())
     }
 
     @Test
-    fun unauthenticatedCarCreationIsRejected() = authzTest {
+    fun `unauthenticated car creation is rejected`() = authzTest {
         val response = client.post("/cars") {
             contentType(ContentType.Application.Json)
             setBody(carRequest())
@@ -259,7 +259,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun renterCannotCreateCar() = authzTest {
+    fun `renter cannot create car`() = authzTest {
         val response = client.post("/cars") {
             bearerAuth(loginToken("renter@example.com"))
             contentType(ContentType.Application.Json)
@@ -269,7 +269,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun ownerCanCreateCarWithAuthenticatedIdentity() = authzTest {
+    fun `owner can create car with authenticated identity`() = authzTest {
         val response = client.post("/cars") {
             bearerAuth(loginToken("owner@example.com"))
             contentType(ContentType.Application.Json)
@@ -280,7 +280,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun invalidCarLocationIsRejected() = authzTest {
+    fun `invalid car location is rejected`() = authzTest {
         for (request in listOf(carRequest(pickupId = 999), carRequest(dropOffId = 999))) {
             val response = client.post("/cars") {
                 bearerAuth(loginToken("owner@example.com"))
@@ -292,7 +292,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun renterIsRejectedBeforeInvalidLocationValidation() = authzTest {
+    fun `renter is rejected before invalid location validation`() = authzTest {
         val response = client.post("/cars") {
             bearerAuth(loginToken("renter@example.com"))
             contentType(ContentType.Application.Json)
@@ -302,7 +302,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun ownerCannotDeleteAnotherOwnersCar() = authzTest {
+    fun `owner cannot delete another owners car`() = authzTest {
         val response = client.delete("/cars/2") {
             bearerAuth(loginToken("owner@example.com"))
         }
@@ -311,7 +311,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun ownerCanDeleteOwnCar() = authzTest {
+    fun `owner can delete own car`() = authzTest {
         val response = client.delete("/cars/1") {
             bearerAuth(loginToken("owner@example.com"))
         }
@@ -336,7 +336,7 @@ class AuthorizationTest {
     )
 
     @Test
-    fun selfRegisteredUserCannotBecomeOwner() = authzTest {
+    fun `self registered user cannot become owner`() = authzTest {
         val email = "wannabe-owner@example.com"
         val withRole = client.post("/register") {
             contentType(ContentType.Application.Json)
@@ -364,7 +364,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun renterLoginTokenContainsOnlyStoredRole() = authzTest {
+    fun `renter login token contains only stored role`() = authzTest {
         val decoded = JWT.require(Algorithm.HMAC256(SECRET)).withIssuer(ISSUER).withAudience(AUDIENCE).build()
             .verify(loginToken("renter@example.com"))
         assertEquals("RENTER", decoded.getClaim("role").asString())
@@ -372,13 +372,13 @@ class AuthorizationTest {
     }
 
     @Test
-    fun roleForgedWithOtherSecretIsRejected() = authzTest {
+    fun `role forged with other secret is rejected`() = authzTest {
         val forged = signedToken(renterId, "OWNER", secret = "attacker-secret")
         assertEquals(HttpStatusCode.Unauthorized, client.get("/owner-only") { bearerAuth(forged) }.status)
     }
 
     @Test
-    fun nonPositiveUserIdIsRejected() = authzTest {
+    fun `non positive user id is rejected`() = authzTest {
         for (userId in listOf(0L, -1L)) {
             val token = signedToken(userId, "OWNER")
             assertEquals(HttpStatusCode.Unauthorized, client.get("/owner-only") { bearerAuth(token) }.status)
@@ -386,7 +386,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun unknownOrMalformedRoleClaimIsForbidden() = authzTest {
+    fun `unknown or malformed role claim is forbidden`() = authzTest {
         for (role in listOf("OWNER ", "ADMIN", "")) {
             val response = client.get("/owner-only") { bearerAuth(signedToken(ownerId, role)) }
             assertEquals(HttpStatusCode.Forbidden, response.status, "role=$role")
@@ -394,7 +394,7 @@ class AuthorizationTest {
     }
 
     @Test
-    fun authorizationServiceValidatesPermissions() {
+    fun `authorization service validates permissions`() {
         // Owner permissions
         assertTrue(authService.canManageCars(UserRole.OWNER))
         assertFalse(authService.canManageCars(UserRole.RENTER))

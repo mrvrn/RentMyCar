@@ -119,7 +119,7 @@ class CarCrudTest {
         .sign(Algorithm.HMAC256(SECRET))
 
     @Test
-    fun getCarsReturnsOk() = carTest {
+    fun `get cars returns ok`() = carTest {
         val response = client.get("/cars")
         assertEquals(HttpStatusCode.OK, response.status)
     }
@@ -157,7 +157,7 @@ class CarCrudTest {
     }
 
     @Test
-    fun postCarWithoutAuthReturnsUnauthorized() = carTest {
+    fun `post car without auth returns unauthorized`() = carTest {
         val response = client.post("/cars") {
             contentType(ContentType.Application.Json)
             setBody("""{"brand":"Tesla","type":"Sedan","licensePlate":"XX-11-YY","pricePerHour":10.00,"pickupId":$pickupLocId,"dropOffId":$dropOffLocId}""")
@@ -166,7 +166,7 @@ class CarCrudTest {
     }
 
     @Test
-    fun postCarWithAuthCreatesCar() = carTest {
+    fun `post car with auth creates car`() = carTest {
         val response = client.post("/cars") {
             bearerAuth(token(testUserId))
             contentType(ContentType.Application.Json)
@@ -264,7 +264,7 @@ class CarCrudTest {
     }
 
     @Test
-    fun invalidCreateInputReturnsBadRequest() = carTest {
+    fun `invalid create input returns bad request`() = carTest {
         assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-01", pricePerHour = "0")).status)
         assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-02", pricePerHour = "-5.00")).status)
         assertEquals(HttpStatusCode.BadRequest, postCar(carJson("BAD-03", pricePerHour = "\"abc\"")).status)
@@ -277,7 +277,7 @@ class CarCrudTest {
     }
 
     @Test
-    fun invalidUpdateInputIsRejected() = carTest {
+    fun `invalid update input is rejected`() = carTest {
         val firstId = Json.parseToJsonElement(postCar(carJson("UPD-01")).bodyAsText()).jsonObject["id"]!!.jsonPrimitive.long
         assertEquals(HttpStatusCode.Created, postCar(carJson("UPD-02")).status)
 

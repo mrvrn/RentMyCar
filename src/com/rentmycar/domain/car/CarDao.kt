@@ -29,6 +29,9 @@ class Car(id: EntityID<Long>) : LongEntity(id) {
     var dropOff by Location referencedOn Cars.dropOffId
     var pictures by Cars.pictures
     var isAvailable by Cars.isAvailable
+    var category by Cars.category
+    var fuelType by Cars.fuelType
+    var consumptionPer100Km by Cars.consumptionPer100Km
 
     val rentals by Rental referrersOn Rentals.carId // make sure to use val and referrersOn
 }
