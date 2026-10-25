@@ -86,11 +86,13 @@ class JwtAuthTest {
         issuer: String = ISSUER,
         audience: String = AUDIENCE,
         userId: Long? = JwtAuthTest.userId,
+        role: String? = "RENTER",
         expiresAt: Date = Date(System.currentTimeMillis() + 60_000),
     ): String = JWT.create()
         .withIssuer(issuer)
         .withAudience(audience)
         .apply { if (userId != null) withClaim("userId", userId) }
+        .withClaim("role", role)
         .withExpiresAt(expiresAt)
         .sign(Algorithm.HMAC256(secret))
 
@@ -168,6 +170,18 @@ class JwtAuthTest {
     @Test
     fun `valid token is accepted`() = jwtTest {
         assertEquals(HttpStatusCode.OK, client.getUser(token()).status)
+    }
+
+    @Test
+    fun `owner can access own user profile`() = jwtTest {
+        assertEquals(HttpStatusCode.OK, client.getUser(token(role = "OWNER")).status)
+    }
+
+    @Test
+    fun `missing or unknown role cannot access user profile`() = jwtTest {
+        for (role in listOf(null, "ADMIN")) {
+            assertEquals(HttpStatusCode.Forbidden, client.getUser(token(role = role)).status)
+        }
     }
 
     @Test

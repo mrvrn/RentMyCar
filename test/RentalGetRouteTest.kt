@@ -63,6 +63,12 @@ class RentalGetRouteTest {
     fun `owner can read rental details`() = checkGet(userId = 8L)
 
     @Test
+    fun `missing role is forbidden before rental lookup`() = checkGet(
+        role = null, expectedStatus = HttpStatusCode.Forbidden,
+        expectedBody = "Access denied: insufficient permissions", expectedLookups = emptyList(),
+    )
+
+    @Test
     fun `unrelated user cannot read rental details`() = checkGet(
         userId = 9L,
         expectedStatus = HttpStatusCode.Forbidden,
@@ -85,6 +91,7 @@ class RentalGetRouteTest {
         expectedStatus: HttpStatusCode = HttpStatusCode.OK,
         expectedBody: String? = null,
         expectedLookups: List<Long> = listOf(42L),
+        role: String? = if (userId == 8L) "OWNER" else "RENTER",
     ) = testApplication {
         val repository = LookupRepository(exists)
         environment {
@@ -104,6 +111,7 @@ class RentalGetRouteTest {
             .withIssuer("test-issuer")
             .withAudience("test-audience")
             .withClaim("userId", userId)
+            .withClaim("role", role)
             .sign(Algorithm.HMAC256("rental-get-test-secret"))
 
         val response = client.get("/rentals/$id") {

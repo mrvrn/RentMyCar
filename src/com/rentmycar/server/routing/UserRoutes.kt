@@ -10,9 +10,6 @@ import com.rentmycar.domain.user.dto.LoginUserDto
 import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.RegisterUserRequest
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.response.respond
@@ -28,39 +25,6 @@ fun Route.userRoutes(repository: IUserRepository) {
     val audience = jwtConfig
         .property("jwt.audience").getString()
 
-    authenticate("auth-jwt") {
-        route("/users") {
-            get("/{id}") {
-                val id = call.parameters["id"]?.toLongOrNull()
-
-                if (id == null) {
-                    call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
-                    return@get
-                }
-
-                val principal = call.principal<JWTPrincipal>()
-                val authenticatedUserId = principal
-                    ?.payload
-                    ?.getClaim("userId")
-                    ?.asLong()
-
-                if (authenticatedUserId != id) {
-                    call.respond(HttpStatusCode.Forbidden, "Access denied")
-                    return@get
-                }
-
-                val user = repository.findById(id)
-
-                if (user == null) {
-                    call.respond(HttpStatusCode.NotFound, "User not found")
-                    return@get
-                }
-
-                call.respond(user)
-            }
-        }
-    }
-
     route("/register") {
         post {
             val input = try {
@@ -68,12 +32,14 @@ fun Route.userRoutes(repository: IUserRepository) {
             } catch (_: BadRequestException) {
                 return@post call.respond(HttpStatusCode.BadRequest, "Invalid registration data")
             }
+
             val user = input.copy(
                 name = input.name.trim(),
                 email = input.email.trim(),
                 phone = input.phone.trim(),
                 address = input.address.trim(),
             )
+
             val createUser = CreateUserDto(
                 name = user.name,
                 email = user.email,
@@ -104,9 +70,10 @@ fun Route.userRoutes(repository: IUserRepository) {
                 // Self-registration always creates a renter; an owner role is never client-assignable.
                 repository.create(createUser, UserRole.RENTER)
             } catch (_: DuplicateEmailException) {
-                return@post call.respond(HttpStatusCode.Conflict, "Email is already registered")
+                // Vanuit een security stand point is dit bad practice. In echte omgevingen dit niet doen:
+                call.respond(HttpStatusCode.Conflict, "Email already in use")
             }
-            call.respond(HttpStatusCode.Created)
+            call.respond(HttpStatusCode.OK, "Registration request processed.")
         }
     }
 

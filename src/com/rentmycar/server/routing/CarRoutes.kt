@@ -1,6 +1,5 @@
 package com.rentmycar.server.routing
 
-import com.rentmycar.domain.car.dto.CarDto
 import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.car.dto.UpdateCarDto
 import com.rentmycar.domain.car.DuplicateLicensePlateException
@@ -11,11 +10,8 @@ import com.rentmycar.domain.rental.RentalNotFoundException
 import com.rentmycar.domain.rental.RentalUnavailableException
 import com.rentmycar.domain.user.IUserRepository
 import com.rentmycar.domain.user.UserRole
-import com.rentmycar.server.auth.authenticatedUserId
 import com.rentmycar.server.auth.authorize
 import io.ktor.http.*
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -23,23 +19,6 @@ import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 
 val carRoutesLogger = LoggerFactory.getLogger("CarRoutes")
-
-private suspend fun ApplicationCall.carOrRespond(carRepository: ICarRepository): CarDto? {
-    val id = parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
-
-    if (id == null) {
-        respond(HttpStatusCode.BadRequest, "Invalid car ID")
-        return null
-    }
-
-    val car = carRepository.findById(id)
-    if (car == null) {
-        respond(HttpStatusCode.NotFound, "Car not found")
-        return null
-    }
-
-    return car
-}
 
 fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalRepository, userRepository: IUserRepository) {
     route("/cars") {
@@ -57,10 +36,10 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
             call.respond(HttpStatusCode.OK, car)
         }
 
-        authenticate("auth-jwt") {
+        authorize(UserRole.RENTER) {
             post("/{id}/rental") {
+                val renterId = (call.userOrRespond(userRepository) ?: return@post).id
                 val carId = (call.carOrRespond(repository) ?: return@post).id
-                val renterId = call.userIdOrRespond(userRepository) ?: return@post
 
                 val input = call.receive<CreateRentalDto>()
 
@@ -80,8 +59,7 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
 
         authorize(UserRole.OWNER) {
             post {
-                val ownerId = call.authenticatedUserId()
-                    ?: return@post call.respond(HttpStatusCode.Unauthorized, "Authentication required")
+                val ownerId = (call.userOrRespond(userRepository) ?: return@post).id
                 val request = try {
                     call.receive<CreateCarDto>()
                 } catch (_: BadRequestException) {
@@ -107,12 +85,8 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
             }
 
             put("/{id}") {
-                val id = call.parameters["id"]?.toLongOrNull()
-                    ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldig car ID"))
-                val ownerId = call.authenticatedUserId()
-                    ?: return@put call.respond(HttpStatusCode.Unauthorized, "Authentication required")
-                val existing = repository.findById(id)
-                    ?: return@put call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
+                val ownerId = (call.userOrRespond(userRepository) ?: return@put).id
+                val existing = call.carOrRespond(repository) ?: return@put
                 if (existing.ownerId != ownerId) {
                     return@put call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Geen toegang tot deze auto"))
                 }
@@ -132,7 +106,7 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
                     return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to validationError))
                 }
                 try {
-                    val updated = repository.update(id, request)
+                    val updated = repository.update(existing.id, request)
                     if (updated == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
                     else call.respond(HttpStatusCode.OK, updated)
                 } catch (e: IllegalArgumentException) {
@@ -143,16 +117,12 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
             }
 
             delete("/{id}") {
-                val id = call.parameters["id"]?.toLongOrNull()
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Ongeldig car ID"))
-                val ownerId = call.authenticatedUserId()
-                    ?: return@delete call.respond(HttpStatusCode.Unauthorized, "Authentication required")
-                val existing = repository.findById(id)
-                    ?: return@delete call.respond(HttpStatusCode.NotFound, mapOf("error" to "Auto niet gevonden"))
+                val ownerId = (call.userOrRespond(userRepository) ?: return@delete).id
+                val existing = call.carOrRespond(repository) ?: return@delete
                 if (existing.ownerId != ownerId) {
                     return@delete call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Geen toegang tot deze auto"))
                 }
-                call.respond(if (repository.delete(id)) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+                call.respond(if (repository.delete(existing.id)) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
             }
         }
     }

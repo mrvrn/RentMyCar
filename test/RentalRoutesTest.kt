@@ -33,6 +33,23 @@ class RentalRoutesTest {
     private val input = CreateRentalDto(12L, "2100-11-01T10:00:00", "2100-11-01T11:30:00")
 
     @Test
+    fun `booking rejects missing or unknown roles before looking up the car`() {
+        for (role in listOf(null, "ADMIN")) {
+            checkRoute(role = role, expectedStatus = HttpStatusCode.Forbidden,
+                expectCall = false, expectedCarLookups = emptyList())
+        }
+    }
+
+    @Test
+    fun `owners can book through renter routes`() = checkRoute(role = "OWNER")
+
+    @Test
+    fun `renters cannot approve reservations`() = checkRoute(
+        method = HttpMethod.Patch, path = "/rentals/42/status", role = "RENTER",
+        expectedStatus = HttpStatusCode.Forbidden, expectCall = false,
+    )
+
+    @Test
     fun `creation passes car body and authenticated renter and returns created rental`() = checkRoute()
 
     @Test
@@ -158,6 +175,7 @@ class RentalRoutesTest {
         expectedStatus: HttpStatusCode = HttpStatusCode.Created,
         expectCall: Boolean = true,
         expectedCarLookups: List<Long>? = null,
+        role: String? = if (method == HttpMethod.Patch) "OWNER" else "RENTER",
     ) = testApplication {
         val repository = RecordingRepository(target, failure)
         val cars = TestCarRepository()
@@ -182,6 +200,7 @@ class RentalRoutesTest {
             .withIssuer("test-issuer")
             .withAudience("test-audience")
             .withClaim("userId", 7L)
+            .withClaim("role", role)
             .sign(Algorithm.HMAC256("rental-routes-test-secret"))
         val response = client.request(path) {
             this.method = method

@@ -90,6 +90,7 @@ class RentalCancellationRouteTest {
             .withIssuer("test-issuer")
             .withAudience("test-audience")
             .withClaim("userId", 7L)
+            .withClaim("role", if (pathSuffix == "status") "OWNER" else "RENTER")
             .sign(Algorithm.HMAC256("cancellation-test-secret"))
         val response = client.patch("/rentals/$id/$pathSuffix") {
             if (authenticated) bearerAuth(token)

@@ -14,6 +14,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.install
 import io.ktor.server.config.MapApplicationConfig
@@ -39,7 +40,7 @@ class RegistrationTest {
         )
         checkRegistration(
             input = input,
-            status = HttpStatusCode.Created,
+            status = HttpStatusCode.OK,
             saved = validUser.copy(password = input.password),
         )
     }
@@ -80,12 +81,12 @@ class RegistrationTest {
     @Test
     fun `accepts password at bcrypt byte limit`() {
         val input = validUser.copy(password = "é".repeat(36))
-        checkRegistration(input = input, status = HttpStatusCode.Created, saved = input)
+        checkRegistration(input = input, status = HttpStatusCode.OK, saved = input)
     }
 
     @Test
-    fun `duplicate email returns conflict`() = checkRegistration(
-        status = HttpStatusCode.Conflict,
+    fun `duplicate email returns the same acknowledgement as new registration`() = checkRegistration(
+        status = HttpStatusCode.OK,
         duplicate = true,
         saved = validUser,
     )
@@ -119,7 +120,10 @@ class RegistrationTest {
         assertEquals(saved, repository.received)
         assertEquals(if (saved != null) UserRole.RENTER else null, repository.receivedRole)
         assertFalse(response.bodyAsText().contains(input.password))
-        if (duplicate) assertEquals("Email is already registered", response.bodyAsText())
+        if (status == HttpStatusCode.OK) {
+            assertEquals("Registration request processed.", response.bodyAsText())
+            assertEquals(ContentType.Text.Plain.withCharset(Charsets.UTF_8), response.contentType())
+        }
     }
 
     // Only creation is needed: registration must not require a user lookup or JWT.

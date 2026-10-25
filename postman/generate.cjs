@@ -51,7 +51,7 @@ const collection = {
   info: { name: 'RentMyCar API tests', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json', description: 'Run in order. Requires an existing available car. Creates persistent users and rentals. See the accompanying README.' },
   variable: Object.entries({ baseUrl: 'http://localhost:8080', carId: '1', email: '', password: 'PostmanTest123!', token: '', ownerEmail: '', ownerPassword: '', ownerToken: '', startAt: '', endAt: '', rentalId: '', rejectedRentalId: '', cancelledAt: '', activeRentalId: '', completedRentalId: '', userId: '', strangerEmail: '', strangerToken: '', invalidToken: 'invalid.jwt.token', pricePerHourCents: '', unavailableCarId: '' }).map(([key, value]) => ({ key, value, type: 'string' })),
   item: [
-    request('01 Register a new user', '/register', user, 201, { pre: `pm.collectionVariables.set('email', 'postman.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');
+    request('01 Register a new user', '/register', user, 200, { pre: `pm.collectionVariables.set('email', 'postman.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');
 pm.collectionVariables.unset('token');
 pm.collectionVariables.unset('ownerToken');
 pm.collectionVariables.unset('rentalId');
@@ -104,7 +104,9 @@ pm.collectionVariables.unset('rentalId');`, tests: `if (pm.response.code === 201
     request('05 Reject overlapping rental', createUrl, rental, 409, { auth: true }),
     request('06 Reject rental without token', createUrl, rental, 401),
     request('07 Reject reversed dates', createUrl, { ...rental, startAt: '{{endAt}}', endAt: '{{startAt}}' }, 400, { auth: true }),
-    request('08 Reject duplicate registration', '/register', user, 409),
+    request('08 Acknowledge duplicate registration without disclosure', '/register', user, 200, {
+      tests: `pm.test('Generic registration acknowledgement', () => pm.expect(pm.response.text()).to.eql('Registration request processed.'));`
+    }),
     request('09 Reject invalid login', '/login', { email: '{{email}}', password: 'deliberately-wrong-password' }, 401),
     request('10 Reject invalid registration', '/register', { ...user, email: 'invalid-email' }, 400),
     request('11 Reject status update without token', statusUrl, { status: 'CONFIRMED' }, 401, { method: 'PATCH' }),
@@ -313,7 +315,7 @@ add('Reject booking a missing car', '/cars/9223372036854775807/rental',
 for (const field of ['startAt', 'endAt']) {
   add(`Reject malformed ${field}`, createUrl, { ...rental, [field]: 'invalid-date' }, 400, { auth: true });
 }
-add('Register unrelated user', '/register', { ...user, email: '{{strangerEmail}}' }, 201, {
+add('Register unrelated user', '/register', { ...user, email: '{{strangerEmail}}' }, 200, {
   pre: `pm.collectionVariables.set('strangerEmail', 'postman.stranger.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');
 pm.collectionVariables.unset('strangerToken');`
 });

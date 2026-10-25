@@ -7,6 +7,8 @@
 
 Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses `POST /cars/{{carId}}/rental` with that token and generates a two-hour period seven days ahead. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`. All creation and rebooking requests use this car route.
 
+Valid registration requests receive the same `200 OK` acknowledgement for new and existing email addresses. Request 08 checks this generic duplicate-registration response; it does not indicate whether an account was created. Existing accounts are not modified.
+
 For manual use, send requests 01, 02, and 04 in order. To log in with an existing account, set `email` and `password`, skip registration, and send request 02. Avoid environment variables named `email`, `password`, `token`, `startAt`, or `endAt`, since they override collection variables.
 
 The 89 requests cover registration, login, profiles, car lookup, rental creation, overlapping bookings, missing authentication, reversed dates, duplicate registration, invalid credentials, and invalid registration data. Status tests also cover owner login, renter access denied, unsupported transitions, unknown enum values, invalid and missing rental IDs, rejection, rebooking the rejected period, confirmation, and attempts to change decided reservations.
