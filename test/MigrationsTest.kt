@@ -38,7 +38,7 @@ class MigrationsTest {
             }
         }
 
-        assertEquals(1, migrateDatabase(settings).migrationsExecuted)
+        assertEquals(2, migrateDatabase(settings).migrationsExecuted)
         assertEquals(0, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->
