@@ -11,12 +11,6 @@ import org.jetbrains.exposed.v1.core.eq
 import java.sql.SQLException
 import java.util.Locale
 
-private fun validateHourlyRate(price: java.math.BigDecimal) {
-    require(price.signum() >= 0) { "Hourly rate must not be negative" }
-    require(price <= "99999999.99".toBigDecimal()) { "Hourly rate exceeds the supported maximum" }
-    require(price.stripTrailingZeros().scale() <= 2) { "Hourly rate must have at most two decimal places" }
-}
-
 class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     override fun toDto(entity: Car): CarDto = entity.toDto()
 
@@ -34,20 +28,25 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     }
 
     override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto {
-        validateHourlyRate(car.pricePerHour)
+        val validated = CarValidation.normalizeAndValidate(car)
+        require(ownerId > 0) { "Owner ID must be positive" }
+        return createValidated(validated, ownerId)
+    }
+
+    private suspend fun createValidated(car: CreateCarDto, ownerId: Long): CarDto {
         try {
             return withTransaction {
                 val normalizedPlate = car.licensePlate.trim().uppercase(Locale.ROOT)
                 if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
-                    throw DuplicateLicensePlateException(IllegalStateException("Dit kenteken is al in gebruik"))
+                    throw DuplicateLicensePlateException(IllegalStateException("License plate is already in use"))
                 }
 
                 val ownerUser = User.findById(ownerId)
-                    ?: throw IllegalArgumentException("Eigenaar niet gevonden")
+                    ?: throw IllegalArgumentException("Owner not found")
                 val pickupLocation = Location.findById(car.pickupId)
-                    ?: throw IllegalArgumentException("Ophaallocatie met ID ${car.pickupId} bestaat niet")
+                    ?: throw IllegalArgumentException("Pickup location with ID ${car.pickupId} does not exist")
                 val dropOffLocation = Location.findById(car.dropOffId)
-                    ?: throw IllegalArgumentException("Inleverlocatie met ID ${car.dropOffId} bestaat niet")
+                    ?: throw IllegalArgumentException("Drop-off location with ID ${car.dropOffId} does not exist")
 
                 toDto(Car.new {
                     owner = ownerUser
@@ -71,7 +70,12 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     }
 
     override suspend fun update(id: Long, car: UpdateCarDto): CarDto? {
-        car.pricePerHour?.let(::validateHourlyRate)
+        val validated = CarValidation.normalizeAndValidate(car)
+        require(id > 0) { "Car ID must be positive" }
+        return updateValidated(id, validated)
+    }
+
+    private suspend fun updateValidated(id: Long, car: UpdateCarDto): CarDto? {
         try {
             return withTransaction {
                 val existing = Car.findById(id) ?: return@withTransaction null
@@ -80,7 +84,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                     val normalizedPlate = newPlate.trim().uppercase(Locale.ROOT)
                     if (normalizedPlate != existing.licensePlate) {
                         if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
-                            throw DuplicateLicensePlateException(IllegalStateException("Dit kenteken is al in gebruik"))
+                            throw DuplicateLicensePlateException(IllegalStateException("License plate is already in use"))
                         }
                         existing.licensePlate = normalizedPlate
                     }
@@ -89,9 +93,9 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                 car.type?.let { existing.type = it }
                 car.pricePerHour?.let { existing.pricePerHour = it }
                 car.pickupId?.let { existing.pickup = Location.findById(it)
-                    ?: throw IllegalArgumentException("Ophaallocatie met ID $it bestaat niet") }
+                    ?: throw IllegalArgumentException("Pickup location with ID $it does not exist") }
                 car.dropOffId?.let { existing.dropOff = Location.findById(it)
-                    ?: throw IllegalArgumentException("Inleverlocatie met ID $it bestaat niet") }
+                    ?: throw IllegalArgumentException("Drop-off location with ID $it does not exist") }
                 car.pictures?.let { existing.pictures = it }
                 car.isAvailable?.let { existing.isAvailable = it }
                 toDto(existing)

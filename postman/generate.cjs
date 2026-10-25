@@ -506,4 +506,52 @@ for (const [label, url, method, body] of [
 for (const key of ['otherOwnerEmail', 'otherOwnerPassword', 'otherOwnerToken']) {
   collection.variable.push({ key, value: '', type: 'string' });
 }
+// Shared input validation regressions. These use a separate disposable car.
+const validationUrl = '/cars/{{validationCarId}}';
+add('Create validation fixture car', '/cars', null, 201, { ...owner,
+  rawBody: carBody({ licensePlate: '{{managedPlate}}-validation' }), tests: `if (pm.response.code === 201) {
+pm.collectionVariables.set('validationCarId', pm.response.json().id);
+pm.collectionVariables.set('validationCarSnapshot', JSON.stringify(pm.response.json()));
+}` });
+for (const [label, changes] of [
+  ['oversized brand', { brand: 'a'.repeat(256) }], ['oversized type', { type: 'a'.repeat(256) }],
+  ['oversized plate', { licensePlate: 'A'.repeat(256) }],
+  ['plate exceeding limit after uppercasing', { licensePlate: 'ß'.repeat(128) }],
+  ['invalid plate syntax', { licensePlate: 'AB/<script>' }],
+  ['control character in brand', { brand: 'Ford\u0000Test' }],
+  ['zero pickup ID', { pickupId: 0 }], ['negative drop-off ID', { dropOffId: -1 }],
+  ['too many pictures', { pictures: Array(21).fill('https://example.com/car.png') }],
+  ['oversized picture URL', { pictures: ['https://example.com/'.padEnd(2049, 'a')] }],
+  ['blank picture URL', { pictures: [' '] }], ['relative picture URL', { pictures: ['relative.png'] }],
+  ['unsupported picture scheme', { pictures: ['javascript:alert(1)'] }],
+  ['picture URL without host', { pictures: ['https:///car.png'] }],
+  ['picture URL with credentials', { pictures: ['https://user:password@example.com/car.png'] }],
+  ['picture URL with invalid port', { pictures: ['https://example.com:70000/car.png'] }],
+]) {
+  add(`Reject car create with ${label}`, '/cars', null, 400, { ...owner,
+    rawBody: carBody({ licensePlate: '{{managedPlate}}-invalid', ...changes }) });
+  add(`Reject car update with ${label}`, validationUrl, changes, 400, ownerPut);
+}
+add('Validation failures leave car unchanged', validationUrl, null, 200, { method: 'GET', tests: `
+pm.test('All original fields preserved', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.variables.get('validationCarSnapshot'))));` });
+add('Accept maximum text and picture limits', validationUrl,
+  { brand: 'a'.repeat(255), type: 'b'.repeat(255), licensePlate: 'C'.repeat(255),
+    pictures: Array(20).fill('https://example.com/'.padEnd(2048, 'a')) }, 200, ownerPut);
+add('Boundary values survive database round trip', validationUrl, null, 200, { method: 'GET', tests: `
+pm.test('Maximum text and picture values persisted', () => {
+  const car = pm.response.json();
+  pm.expect(car.brand).to.eql('a'.repeat(255)); pm.expect(car.type).to.eql('b'.repeat(255));
+  pm.expect(car.licensePlate).to.eql('C'.repeat(255));
+  pm.expect(car.pictures).to.eql(Array(20).fill('https://example.com/'.padEnd(2048, 'a')));
+});` });
+add('Delete validation fixture car', validationUrl, null, 204, { ...owner, method: 'DELETE' });
+add('Deleted validation fixture is absent', validationUrl, null, 404, { method: 'GET' });
+for (const [label, changes] of [
+  ['phone containing letters', { phone: 'call me please' }], ['short phone', { phone: '123456' }],
+  ['long phone', { phone: '1'.repeat(16) }], ['multiple phone plus signs', { phone: '++31612345678' }],
+  ['unbalanced phone parentheses', { phone: '+31 (612345678' }],
+  ['contact control character', { name: 'Test\u0000User' }],
+]) add(`Reject registration with ${label}`, '/register', { ...user, ...changes }, 400);
+add('Register formatted international phone', '/register', { ...user, email: '{{formattedPhoneEmail}}', phone: '+31 (0)6 1234-5678' }, 200, {
+  pre: `pm.collectionVariables.set('formattedPhoneEmail', 'phone.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');` });
 fs.writeFileSync(path.join(__dirname, 'RentMyCar.postman_collection.json'), JSON.stringify(collection, null, 2) + '\n');

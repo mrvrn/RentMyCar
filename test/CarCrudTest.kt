@@ -325,6 +325,39 @@ class CarCrudTest {
     }
 
     @Test
+    fun `shared car validation returns bad request without altering stored data`() = carTest {
+        val input = CreateCarDto("Validation", "Car", "VALIDATE-01", "12.50".toBigDecimal(), pickupLocId, dropOffLocId)
+        val created = postCar(Json.encodeToString(input))
+        assertEquals(HttpStatusCode.Created, created.status)
+        val id = Json.parseToJsonElement(created.bodyAsText()).jsonObject.getValue("id").jsonPrimitive.long
+        val original = carRepository.findById(id)
+        val invalid = listOf(
+            input.copy(brand = "a".repeat(256)), input.copy(type = "a".repeat(256)),
+            input.copy(licensePlate = "A".repeat(256)), input.copy(licensePlate = "ß".repeat(128)),
+            input.copy(licensePlate = "INVALID/<plate>"), input.copy(brand = "Bad\u0000Brand"),
+            input.copy(pictures = List(21) { "https://example.com/car.png" }),
+            input.copy(pictures = listOf("https://example.com/".padEnd(2049, 'a'))),
+            input.copy(pictures = listOf("relative.png")), input.copy(pictures = listOf("javascript:alert(1)")),
+            input.copy(pictures = listOf("https://user:password@example.com/car.png")),
+            input.copy(pickupId = 0), input.copy(dropOffId = -1),
+        )
+        for (badInput in invalid) {
+            assertEquals(HttpStatusCode.BadRequest, postCar(Json.encodeToString(badInput)).status)
+            val update = UpdateCarDto(badInput.brand, badInput.type, badInput.licensePlate, badInput.pricePerHour,
+                badInput.pickupId, badInput.dropOffId, badInput.pictures, badInput.isAvailable)
+            assertEquals(HttpStatusCode.BadRequest, putCar(id, Json.encodeToString(update)).status)
+            assertEquals(original, carRepository.findById(id))
+        }
+        val boundary = input.copy(brand = "a".repeat(255), type = "b".repeat(255), licensePlate = "C".repeat(255),
+            pictures = List(20) { "https://example.com/".padEnd(2048, 'a') })
+        val boundaryResponse = postCar(Json.encodeToString(boundary))
+        assertEquals(HttpStatusCode.Created, boundaryResponse.status)
+        val boundaryId = Json.parseToJsonElement(boundaryResponse.bodyAsText()).jsonObject.getValue("id").jsonPrimitive.long
+        assertEquals(boundary.pictures, carRepository.findById(boundaryId)?.pictures)
+        assertEquals(255, carRepository.findById(boundaryId)?.licensePlate?.length)
+    }
+
+    @Test
     fun `updates persist all editable fields and preserve omitted fields`() = carTest {
         val created = postCar(carJson("FIELDS-01"))
         assertEquals(HttpStatusCode.Created, created.status)
