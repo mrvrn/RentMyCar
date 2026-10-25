@@ -10,6 +10,7 @@ import com.rentmycar.domain.user.User
 import java.util.Locale
 import org.jetbrains.exposed.v1.core.eq
 import java.sql.SQLException
+import java.util.Locale
 
 class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     override fun toDto(entity: Car): CarDto = entity.toDto()
@@ -53,7 +54,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                     owner = ownerUser
                     brand = car.brand
                     type = car.type
-                    licensePlate = car.licensePlate
+                    licensePlate = car.licensePlate.trim().uppercase(Locale.ROOT)
                     pricePerHour = car.pricePerHour
                     pickup = pickupLocation
                     dropOff = dropOffLocation
@@ -78,12 +79,13 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                 val existing = Car.findById(id) ?: return@withTransaction null
 
                 car.licensePlate?.let { newPlate ->
-                    if (newPlate != existing.licensePlate) {
-                        val dup = Car.find { Cars.licensePlate eq newPlate }.firstOrNull()
+                    val normalizedPlate = newPlate.trim().uppercase(Locale.ROOT)
+                    if (normalizedPlate != existing.licensePlate) {
+                        val dup = Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull()
                         if (dup != null) {
                             throw DuplicateLicensePlateException(IllegalStateException("Dit kenteken is al in gebruik"))
                         }
-                        existing.licensePlate = newPlate
+                        existing.licensePlate = normalizedPlate
                     }
                 }
 
