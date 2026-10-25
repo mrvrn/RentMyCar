@@ -49,7 +49,7 @@ const optionalCancellation = (variable, status) => ({
 });
 const collection = {
   info: { name: 'RentMyCar API tests', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json', description: 'Run in order. Requires an existing available car. Creates persistent users and rentals. See the accompanying README.' },
-  variable: Object.entries({ baseUrl: 'http://localhost:8080', carId: '1', email: '', password: 'PostmanTest123!', token: '', ownerEmail: '', ownerPassword: '', ownerToken: '', startAt: '', endAt: '', rentalId: '', rejectedRentalId: '', cancelledAt: '', activeRentalId: '', completedRentalId: '', userId: '', strangerEmail: '', strangerToken: '', invalidToken: 'invalid.jwt.token',   pricePerHourCents: '', knownLicensePlate: '', unavailableCarId: '' }).map(([key, value]) => ({ key, value, type: 'string' })),
+  variable: Object.entries({ baseUrl: 'http://localhost:8080', carId: '1', email: '', password: 'PostmanTest123!', token: '', ownerEmail: '', ownerPassword: '', ownerToken: '', startAt: '', endAt: '', rentalId: '', rejectedRentalId: '', cancelledAt: '', activeRentalId: '', completedRentalId: '', userId: '', strangerEmail: '', strangerToken: '', invalidToken: 'invalid.jwt.token', pricePerHourCents: '', unavailableCarId: '' }).map(([key, value]) => ({ key, value, type: 'string' })),
   item: [
     request('01 Register a new user', '/register', user, 200, { pre: `pm.collectionVariables.set('email', 'postman.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');
 pm.collectionVariables.unset('token');
@@ -73,11 +73,12 @@ pm.collectionVariables.unset('cancelledAt');` }),
       tests: `pm.test('Empty reservation list', () => pm.expect(pm.response.json()).to.eql([]));` }),
     request('03 Check selected car', '/cars/{{carId}}', null, 200, { method: 'GET', tests: `if (pm.response.code === 200) {
   const data = pm.response.json();
+  pm.collectionVariables.set('fixturePickupId', data.pickupId);
+  pm.collectionVariables.set('fixtureDropOffId', data.dropOffId);
   pm.test('Correct car', () => pm.expect(data.id).to.eql(Number(pm.variables.get('carId'))));
   pm.test('Car is available', () => pm.expect(data.isAvailable).to.eql(true));
   pm.test('Hourly price is valid', () => pm.expect(data.pricePerHour).to.be.a('number').and.at.least(0));
   pm.collectionVariables.set('pricePerHourCents', Math.round(data.pricePerHour * 100));
-  pm.collectionVariables.set('knownLicensePlate', data.licensePlate);
 }` }),
     request('04 Create rental through car route', createUrl, rental, 201, { auth: true, pre: `const start = new Date(Date.now() + 7 * 86400000);
 start.setUTCHours(10, 0, 0, 0);
@@ -313,30 +314,6 @@ add('Reject missing registration fields', '/register', {}, 400);
 add('Reject missing car lookup', '/cars/9223372036854775807', null, 404, { method: 'GET' });
 add('Reject booking a missing car', '/cars/9223372036854775807/rental',
   rental, 404, { auth: true });
-add('Reject car update by another owner', '/cars/{{carId}}', { brand: 'Forbidden update' }, 403, { method: 'PUT', auth: 'stranger' });
-add('Reject car deletion by another owner', '/cars/{{carId}}', null, 403, { method: 'DELETE', auth: 'stranger' });
-add('Reject unknown car lookup', '/cars/9223372036854775807', null, 404, { method: 'GET' });
-add('Reject malformed car lookup', '/cars/abc', null, 400, { method: 'GET' });
-add('Reject car with empty brand', '/cars', {
-  brand: '',
-  type: 'Test',
-  licensePlate: 'POSTMAN-BLANK',
-  pricePerHour: 10,
-  pickupId: 1,
-  dropOffId: 1
-}, 400, { auth: 'owner' });
-add('Reject duplicate car license plate', '/cars', {
-  brand: 'Duplicate',
-  type: 'Test',
-  licensePlate: '{{knownLicensePlate}}',
-  pricePerHour: 10,
-  pickupId: 1,
-  dropOffId: 1
-}, 409, { auth: 'owner' });
-add('Calculate consumption cost as owner', '/cars/{{carId}}/consumption-cost', null, 200, { method: 'GET', auth: 'owner' });
-add('Reject consumption cost for renter', '/cars/{{carId}}/consumption-cost', null, 403, { method: 'GET', auth: true });
-add('Reject consumption cost without token', '/cars/{{carId}}/consumption-cost', null, 401, { method: 'GET' });
-add('Calculate TCO as owner', '/cars/{{carId}}/tco?kmPerYear=12000', null, 200, { method: 'GET', auth: 'owner' });
 for (const field of ['startAt', 'endAt']) {
   add(`Reject malformed ${field}`, createUrl, { ...rental, [field]: 'invalid-date' }, 400, { auth: true });
 }
@@ -381,4 +358,177 @@ add('Reject unavailable car booking (optional)', '/cars/{{unavailableCarId}}/ren
 }`,
     tests: `pm.test('Car is explicitly unavailable', () => pm.expect(pm.response.text()).to.eql('Car is unavailable'));`
   });
+// Use dedicated cars so management checks never update or delete the selected booking car.
+const owner = { auth: 'owner' };
+const managedUrl = '/cars/{{managedCarId}}';
+const carInput = { brand: 'Coverage', type: 'Hatchback', licensePlate: '{{managedPlate}}',
+  pricePerHour: 12.50, pickupId: '__PICKUP__', dropOffId: '__DROPOFF__',
+  category: 'ICE', fuelType: 'GASOLINE', consumptionPer100Km: 6.00 };
+const carBody = changes => JSON.stringify({ ...carInput, ...changes })
+  .replace('"__PICKUP__"', '{{fixturePickupId}}').replace('"__DROPOFF__"', '{{fixtureDropOffId}}');
+const ownerPut = { ...owner, method: 'PUT' };
+for (const [label, body] of [
+  ['malformed JSON', '{'], ['missing fields', '{}'],
+  ['missing password', JSON.stringify({ email: '{{email}}' })],
+  ['missing email', JSON.stringify({ password: '{{password}}' })],
+  ['null email', JSON.stringify({ email: null, password: '{{password}}' })],
+]) add(`Reject login with ${label}`, '/login', null, 400, { rawBody: body });
+add('Reject oversized UTF-8 login password', '/login', { email: '{{email}}', password: 'é'.repeat(37) }, 401);
+add('Register password at bcrypt byte boundary', '/register', { ...user, email: '{{boundaryEmail}}', password: 'é'.repeat(36) }, 200, {
+  pre: `pm.collectionVariables.set('boundaryEmail', 'boundary.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');`
+});
+add('Login at bcrypt byte boundary', '/login', { email: '{{boundaryEmail}}', password: 'é'.repeat(36) }, 200);
+add('Reject longer login password sharing valid 72-byte prefix', '/login',
+  { email: '{{boundaryEmail}}', password: 'é'.repeat(36) + 'x' }, 401);
+add('List public cars with expected fields', '/cars', null, 200, { method: 'GET', tests: `
+const cars = pm.response.json();
+pm.test('Selected car is listed with its fields', () => {
+  pm.expect(cars).to.be.an('array');
+  const car = cars.find(c => c.id === Number(pm.variables.get('carId')));
+  pm.expect(car).to.be.an('object');
+  for (const key of ['ownerId', 'brand', 'type', 'licensePlate', 'pricePerHour', 'pickupId', 'dropOffId', 'isAvailable']) {
+    pm.expect(car).to.have.property(key);
+  }
+});` });
+add('Create dedicated management car with normalized plate', '/cars', null, 201, { ...owner,
+  pre: `pm.collectionVariables.unset('managedCarId');
+pm.collectionVariables.set('managedPlate', 'pm-' + pm.variables.replaceIn('{{$guid}}'));
+pm.collectionVariables.set('normalizedManagedPlate', pm.variables.get('managedPlate').toUpperCase());`,
+  rawBody: carBody({ licensePlate: '  {{managedPlate}}  ' }), tests: `if (pm.response.code === 201) {
+  const car = pm.response.json();
+  pm.collectionVariables.set('managedCarId', car.id);
+  pm.test('Plate normalized and availability defaults to false', () => {
+    pm.expect(car.licensePlate).to.eql(pm.variables.get('normalizedManagedPlate'));
+    pm.expect(car.isAvailable).to.eql(false);
+    const payload = JSON.parse(require('buffer').Buffer.from(pm.variables.get('ownerToken').split('.')[1], 'base64').toString());
+    pm.expect(car.ownerId).to.eql(payload.userId);
+  });
+}` });
+add('Reject normalized duplicate plate on create', '/cars', null, 409, { ...owner, rawBody: carBody({ licensePlate: '{{normalizedManagedPlate}}' }) });
+add('Reject car creation without token', '/cars', null, 401, { rawBody: carBody({ licensePlate: 'UNAUTHORIZED' }) });
+add('Reject renter creating car', '/cars', null, 403, { auth: true, rawBody: carBody({ licensePlate: 'UNAUTHORIZED' }) });
+for (const method of ['PUT', 'DELETE']) {
+  add(`Reject ${method} car without token`, managedUrl, method === 'PUT' ? { brand: 'Unauthorized' } : null, 401, { method });
+  add(`Reject renter ${method} car`, managedUrl, method === 'PUT' ? { brand: 'Unauthorized' } : null, 403, { method, auth: true });
+}
+add('Authorization failures preserve management car', managedUrl, null, 200, { method: 'GET', tests: `
+pm.test('Car unchanged', () => pm.expect(pm.response.json().brand).to.eql('Coverage'));` });
+for (const [label, changes] of [
+  ['blank brand', { brand: ' ' }], ['blank type', { type: ' ' }], ['blank plate', { licensePlate: ' ' }],
+  ['zero price', { pricePerHour: 0 }], ['negative price', { pricePerHour: -1 }],
+  ['price overflow', { pricePerHour: 100000000 }], ['extra price precision', { pricePerHour: 1.001 }],
+  ['missing pickup', { pickupId: 9223372036854775000 }], ['missing drop-off', { dropOffId: 9223372036854775000 }],
+]) {
+  add(`Reject car create with ${label}`, '/cars', null, 400, { ...owner, rawBody: carBody({ licensePlate: '{{managedPlate}}-invalid', ...changes }) });
+  add(`Reject car update with ${label}`, managedUrl, changes, 400, ownerPut);
+}
+add('Reject malformed car creation', '/cars', null, 400, { ...owner, rawBody: '{' });
+add('Reject incomplete car creation', '/cars', {}, 400, owner);
+add('Reject malformed car update', managedUrl, null, 400, { ...ownerPut, rawBody: '{' });
+add('Failed multi-field update rolls back all fields', managedUrl,
+  { brand: 'Must roll back', dropOffId: 9223372036854775000 }, 400, ownerPut);
+add('Rejected updates preserve stored fields', managedUrl, null, 200, { method: 'GET', tests: `
+pm.test('Original values retained', () => {
+  const car = pm.response.json();
+  pm.expect(car.brand).to.eql('Coverage'); pm.expect(car.pricePerHour).to.eql(12.5);
+  pm.expect(car.licensePlate).to.eql(pm.variables.get('normalizedManagedPlate'));
+  pm.expect(car.dropOffId).to.eql(Number(pm.variables.get('fixtureDropOffId')));
+});` });
+for (const method of ['PUT', 'DELETE']) {
+  add(`Reject ${method} car invalid ID`, '/cars/invalid', method === 'PUT' ? {} : null, 400, { ...owner, method });
+  add(`Reject ${method} missing car`, '/cars/9223372036854775807', method === 'PUT' ? {} : null, 404, { ...owner, method });
+}
+add('Create second management car', '/cars', null, 201, { ...owner,
+  rawBody: carBody({ licensePlate: '{{managedPlate}}-second' }), tests: `if (pm.response.code === 201) {
+pm.collectionVariables.set('secondManagedCarId', pm.response.json().id);
+}` });
+add('Reject duplicate plate update', '/cars/{{secondManagedCarId}}', { licensePlate: '  {{managedPlate}}  ' }, 409, ownerPut);
+add('Update every editable car field', managedUrl, null, 200, { ...ownerPut,
+  rawBody: carBody({ brand: 'Updated', type: 'Estate', licensePlate: ' {{managedPlate}}-updated ',
+    pricePerHour: 22.25, pickupId: '__DROPOFF__', dropOffId: '__PICKUP__', pictures: ['https://example.com/updated.png'], isAvailable: true }),
+  tests: `if (pm.response.code === 200) {
+pm.collectionVariables.set('managedCarSnapshot', JSON.stringify(pm.response.json()));
+}` });
+add('Read persisted car updates', managedUrl, null, 200, { method: 'GET', tests: `
+const car = pm.response.json();
+pm.test('All editable fields persisted', () => {
+  pm.expect(car.brand).to.eql('Updated'); pm.expect(car.type).to.eql('Estate');
+  pm.expect(car.licensePlate).to.eql(pm.variables.get('normalizedManagedPlate') + '-UPDATED');
+  pm.expect(car.pricePerHour).to.eql(22.25);
+  pm.expect(car.pickupId).to.eql(Number(pm.variables.get('fixtureDropOffId')));
+  pm.expect(car.dropOffId).to.eql(Number(pm.variables.get('fixturePickupId')));
+  pm.expect(car.pictures).to.eql(['https://example.com/updated.png']);
+  pm.expect(car.isAvailable).to.eql(true);
+});` });
+add('Empty update preserves car', managedUrl, {}, 200, { ...ownerPut, tests: `
+pm.test('Omitted fields preserved', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.variables.get('managedCarSnapshot'))));` });
+add('Accept maximum car price', managedUrl, { pricePerHour: 99999999.99 }, 200, { ...ownerPut,
+  tests: `pm.test('Maximum price returned', () => pm.expect(pm.response.json().pricePerHour).to.eql(99999999.99));` });
+add('Accept trailing decimal zeros', managedUrl, null, 200, { ...ownerPut, rawBody: '{"pricePerHour":12.5000}',
+  tests: `pm.test('Exact price retained', () => pm.expect(pm.response.json().pricePerHour).to.eql(12.5));` });
+add('Clear pictures and disable availability', managedUrl, { pictures: [], isAvailable: false }, 200, ownerPut);
+add('Read cleared pictures and disabled availability', managedUrl, null, 200, { method: 'GET', tests: `
+pm.test('Pictures and availability persisted', () => {
+  pm.expect(pm.response.json().pictures).to.eql([]);
+  pm.expect(pm.response.json().isAvailable).to.eql(false);
+});` });
+add('Calculate consumption cost as owner', managedUrl + '/consumption-cost', null, 200, {
+  method: 'GET', auth: 'owner',
+  tests: `const data = pm.response.json();
+pm.test('Consumption cost response is complete', () => {
+  pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));
+  pm.expect(data.category).to.eql('ICE');
+  pm.expect(data.consumptionCostPerKm).to.be.a('number');
+});`
+});
+add('Calculate TCO as owner', managedUrl + '/tco?kmPerYear=12000', null, 200, {
+  method: 'GET', auth: 'owner',
+  tests: `const data = pm.response.json();
+pm.test('TCO response is complete', () => {
+  pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));
+  pm.expect(data.category).to.eql('ICE');
+  pm.expect(data.kmPerYear).to.eql(12000);
+  pm.expect(data.tco).to.be.a('number');
+});`
+});
+for (const query of ['', '?kmPerYear=abc', '?kmPerYear=0', '?kmPerYear=-5']) {
+  add(`Reject invalid TCO query ${query || 'missing'}`, managedUrl + '/tco' + query, null, 400, { method: 'GET', auth: 'owner' });
+}
+add('Reject consumption cost without token', managedUrl + '/consumption-cost', null, 401, { method: 'GET' });
+add('Reject TCO for renter', managedUrl + '/tco?kmPerYear=12000', null, 403, { method: 'GET', auth: true });
+add('Reject booking the disabled management car', '/cars/{{managedCarId}}/rental', null, 409, { auth: true,
+  rawBody: JSON.stringify({ carId: '__MANAGED__', startAt: '{{startAt}}', endAt: '{{endAt}}' }).replace('"__MANAGED__"', '{{managedCarId}}'),
+  tests: `pm.test('Unavailable car reason', () => pm.expect(pm.response.text()).to.eql('Car is unavailable'));` });
+add('Reject deleting car with rental history', '/cars/{{carId}}', null, 409, { ...owner, method: 'DELETE',
+  tests: `pm.test('History protected', () => pm.expect(pm.response.json().error).to.eql('Car has associated rentals and cannot be deleted'));` });
+for (const variable of ['managedCarId', 'secondManagedCarId']) {
+  add(`Delete dedicated car ${variable}`, '/cars/{{' + variable + '}}', null, 204, { ...owner, method: 'DELETE' });
+  add(`Deleted car ${variable} is absent`, '/cars/{{' + variable + '}}', null, 404, { method: 'GET' });
+}
+
+// A second owner's credentials cannot be created by the public registration API.
+const optionalOtherOwner = `if (!pm.variables.get('otherOwnerEmail') || !pm.variables.get('otherOwnerPassword')) {
+  console.info('Skipping unrelated-owner checks: configure otherOwnerEmail and otherOwnerPassword.');
+  pm.execution.skipRequest();
+}`;
+add('Login unrelated owner (optional)', '/login', { email: '{{otherOwnerEmail}}', password: '{{otherOwnerPassword}}' }, 200, {
+  pre: `pm.collectionVariables.unset('otherOwnerToken');\n` + optionalOtherOwner,
+  tests: `if (pm.response.code === 200) {
+pm.test('Account is an owner', () => pm.expect(pm.response.json().role).to.eql('OWNER'));
+pm.collectionVariables.set('otherOwnerToken', pm.response.json().token);
+}` });
+for (const [label, url, method, body] of [
+  ['deciding rental', statusUrl, 'PATCH', { status: 'CONFIRMED' }],
+  ['reading rental', detailUrl, 'GET', null],
+  ['updating car', '/cars/{{carId}}', 'PUT', { brand: 'Unauthorized' }],
+  ['deleting car', '/cars/{{carId}}', 'DELETE', null],
+]) {
+  const item = request(`${nextNumber++} Reject unrelated owner ${label} (optional)`, url, body, 403,
+    { method, auth: 'owner', pre: optionalOtherOwner });
+  item.request.auth.bearer[0].value = '{{otherOwnerToken}}';
+  collection.item.push(item);
+}
+for (const key of ['otherOwnerEmail', 'otherOwnerPassword', 'otherOwnerToken']) {
+  collection.variable.push({ key, value: '', type: 'string' });
+}
 fs.writeFileSync(path.join(__dirname, 'RentMyCar.postman_collection.json'), JSON.stringify(collection, null, 2) + '\n');
