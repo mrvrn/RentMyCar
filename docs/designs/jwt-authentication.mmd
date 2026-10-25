@@ -1,0 +1,94 @@
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Login as POST /login
+    participant Credentials as AuthorizationService
+    participant Auth as Ktor Authentication / auth-jwt
+    participant Roles as RoleAuthorizationPlugin
+    participant Route as GET /users/{id}
+
+    Note over Client,Route: Green = successful steps, red = rejected requests
+    Note over Login,Auth: Application startup: configureSecurity installs verifier, validate and challenge
+    Client->>Login: POST /login {email, password}
+    Login->>Credentials: authenticate(credentials)
+    Note over Credentials: Find user by trimmed email, verify password with bcrypt
+    Credentials-->>Login: User or null
+    alt Invalid email or password
+        rect rgb(254, 226, 226)
+            Login-->>Client: 401 Invalid email or password
+        end
+    else Valid credentials
+        rect rgb(220, 252, 231)
+            Login->>Login: JWT.create: issuer, audience, userId, role, expiry in 1 hour
+        end
+        rect rgb(220, 252, 231)
+            Login->>Login: Sign with Algorithm.HMAC256(secret)
+        end
+        rect rgb(220, 252, 231)
+            Login-->>Client: 200 OK {token, role}
+        end
+    end
+
+    Note over Client,Route: Separate request: authorize(RENTER) wraps authenticate("auth-jwt")
+    Client->>Auth: GET /users/{id}, Authorization: Bearer token
+    alt Missing or malformed Bearer credentials
+        rect rgb(254, 226, 226)
+            Auth-->>Client: 401 Token is not valid or has expired
+        end
+    else Bearer token present
+        Auth->>Auth: Verify HMAC256 signature, issuer, audience and expiration
+        alt Token invalid or expired
+            rect rgb(254, 226, 226)
+                Auth-->>Client: 401 Token is not valid or has expired
+            end
+        else Token verified
+            Auth->>Auth: validate: userId must be a Long greater than zero
+            alt userId missing, not numeric or not positive
+                rect rgb(254, 226, 226)
+                    Auth-->>Client: 401 Token is not valid or has expired
+                end
+            else userId accepted
+                rect rgb(220, 252, 231)
+                    Auth->>Auth: Return JWTPrincipal(payload)
+                end
+                rect rgb(220, 252, 231)
+                    Auth->>Roles: AuthenticationChecked
+                end
+                Roles->>Roles: Parse role and check role.includes(RENTER)
+                alt Missing, unknown or insufficient role
+                    rect rgb(254, 226, 226)
+                        Roles-->>Client: 403 Access denied: insufficient permissions
+                    end
+                else RENTER or OWNER
+                    rect rgb(220, 252, 231)
+                        Roles->>Route: Execute authorized route
+                    end
+                    Route->>Route: Parse positive path id
+                    alt Invalid path id
+                        rect rgb(254, 226, 226)
+                            Route-->>Client: 400 Invalid user ID
+                        end
+                    else Path id differs from JWT userId
+                        rect rgb(254, 226, 226)
+                            Route-->>Client: 403 Access denied
+                        end
+                    else Path id matches JWT userId
+                        Route->>Route: userOrRespond: load user by JWT userId
+                        alt User no longer exists
+                            rect rgb(254, 226, 226)
+                                Route-->>Client: 401 Unauthorized
+                            end
+                        else User exists
+                            rect rgb(220, 252, 231)
+                                Route-->>Client: 200 OK with user data
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    Note over Client,Route: GET /cars and GET /cars/{id} are public and bypass this JWT flow
+    Note over Client,Login: POST /logout returns 501, discard token on client, token remains valid until expiry
+
