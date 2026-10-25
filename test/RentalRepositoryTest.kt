@@ -6,39 +6,61 @@ import com.rentmycar.domain.car.Car
 import com.rentmycar.domain.location.Location
 import com.rentmycar.domain.rental.*
 import com.rentmycar.domain.rental.dto.CreateRentalDto
+import com.rentmycar.domain.rental.dto.RentalDto
 import com.rentmycar.domain.user.User
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.mysql.MySQLContainer
 import java.math.BigDecimal
+import java.util.UUID
 import kotlin.test.*
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 class RentalRepositoryTest {
-    @Test
-    fun createsRentalWithCarRenterAndCalculatedPrice() = runBlocking {
-        MySQLContainer("mysql:8.1").use { mysql ->
-            mysql.start()
+    private companion object {
+        // Each fixture gets distinct users and a car. Testcontainers cleans up MySQL on JVM exit.
+        val database by lazy {
+            val mysql = MySQLContainer("mysql:8.1").apply { start() }
             val settings = DatabaseSettings(mysql.jdbcUrl, mysql.username, mysql.password)
             migrateDatabase(settings)
-            val database = settings.connect()
-            val (carId, renterId) = transaction(database) {
-                val user = User.new {
-                    name = "Renter"
-                    email = "renter@example.com"
+            settings.connect()
+        }
+    }
+
+    private class Fixture {
+        val repository = RentalRepository()
+        val ownerId: Long
+        val renterId: Long
+        val strangerId: Long
+        val carId: Long
+        val input: CreateRentalDto
+
+        init {
+            val ids = transaction(database) {
+                fun user(label: String) = User.new {
+                    name = label
+                    email = "${UUID.randomUUID()}@example.com"
                     phone = "0612345678"
                     address = "Test Street 1"
                     password = "test-hash"
                 }
+                val owner = user("Owner")
+                val renter = user("Renter")
+                val stranger = user("Stranger")
                 val location = Location.new {
                     streetName = "Test Street"
                     houseNumber = "1"
                     postalCode = "1234AB"
                     city = "Amsterdam"
                     country = "NL"
-                    this.user = user
+                    user = owner
                 }
                 val car = Car.new {
-                    owner = user
+                    this.owner = owner
                     brand = "Test"
                     type = "Car"
                     licensePlate = "AB-12-CD"
@@ -47,24 +69,347 @@ class RentalRepositoryTest {
                     dropOff = location
                     isAvailable = true
                 }
-                car.id.value to user.id.value
+                listOf(owner.id.value, renter.id.value, stranger.id.value, car.id.value)
             }
-            val repository = RentalRepository()
-            val input = CreateRentalDto(carId, "2026-11-01T10:00:00", "2026-11-01T11:30:00")
-            val result = repository.create(input, renterId, carId)
-            assertEquals(carId, result.carId)
-            assertEquals(renterId, result.renterId)
-            assertEquals("18.75", result.totalPrice)
-            assertEquals(RentalStatus.PENDING, result.status)
-            assertNull(result.cancelledAt)
-            assertTrue(result.createdAt.isNotBlank())
-            assertEquals(result, repository.findById(result.id))
-            assertFailsWith<RentalUnavailableException> {
-                repository.create(input, renterId, carId)
-            }
-            // A reservation can start exactly when the previous one ends.
-            repository.create(input.copy(startAt = "2026-11-01T11:30:00", endAt = "2026-11-01T12:00:00"), renterId, carId)
-            assertEquals(2, repository.findAll().size)
+            ownerId = ids[0]
+            renterId = ids[1]
+            strangerId = ids[2]
+            carId = ids[3]
+            input = CreateRentalDto(carId, "2100-11-01T10:00:00", "2100-11-01T11:30:00")
         }
+
+        suspend fun create(input: CreateRentalDto = this.input) = repository.create(input, renterId, carId)
+
+        fun seed(status: RentalStatus): RentalDto = transaction(database) {
+            Rental.new {
+                car = Car[carId]
+                renter = User[renterId]
+                startAt = LocalDateTime.parse(input.startAt)
+                endAt = LocalDateTime.parse(input.endAt)
+                this.status = status
+                totalPrice = BigDecimal("18.75")
+                cancelledAt = if (status == RentalStatus.CANCELLED) LocalDateTime.parse("2026-01-01T12:00") else null
+            }.toDto()
+        }
+
+        suspend fun rentals() = repository.findAll().filter { it.carId == carId }
+    }
+
+    private fun rentalTest(block: suspend Fixture.() -> Unit) = runBlocking { Fixture().block() }
+
+    @Test
+    fun createsAndReadsRentalWithExactPriceAndDefaults() = rentalTest {
+        val result = create()
+        assertEquals(carId, result.carId)
+        assertEquals(renterId, result.renterId)
+        assertEquals(LocalDateTime.parse(input.startAt), LocalDateTime.parse(result.startAt))
+        assertEquals(LocalDateTime.parse(input.endAt), LocalDateTime.parse(result.endAt))
+        assertEquals("18.75", result.totalPrice)
+        assertEquals(RentalStatus.PENDING, result.status)
+        assertNull(result.cancelledAt)
+        LocalDateTime.parse(result.createdAt)
+        assertEquals(result, repository.findById(result.id))
+        assertEquals(listOf(result), rentals())
+        assertNull(repository.findById(Long.MAX_VALUE))
+    }
+
+    @Test
+    fun rentalDetailsIncludeOverviewAndMetadataForRenter() = rentalTest {
+        val created = create()
+        val overview = repository.findAllByUserId(renterId).single { it.id == created.id }
+        val details = assertNotNull(repository.findDetailsById(created.id, renterId))
+        assertEquals(overview.id, details.id)
+        assertEquals(overview.car, details.car)
+        assertEquals("Test", details.car.brand)
+        assertEquals("Car", details.car.type)
+        assertNull(details.car.pictures)
+        assertEquals(overview.startAt, details.startAt)
+        assertEquals(overview.endAt, details.endAt)
+        assertEquals(overview.status, details.status)
+        assertEquals(overview.totalPrice, details.totalPrice)
+        assertEquals(created.renterId, details.renterId)
+        assertEquals(created.createdAt, details.createdAt)
+        assertNull(details.cancelledAt)
+        repository.changeStatus(created.id, RentalStatus.CANCELLED, renterId)
+        val saved = assertNotNull(repository.findById(created.id))
+        assertEquals(saved.cancelledAt, repository.findDetailsById(created.id, renterId)?.cancelledAt)
+    }
+
+    @Test
+    fun rentalDetailsAllowRenterAndOwnerButRejectUnrelatedUsersForEveryStatus() = rentalTest {
+        for (status in RentalStatus.entries) {
+            val rental = seed(status)
+            for (actor in listOf(ownerId, strangerId)) {
+                if (actor == ownerId) {
+                    val renterDetails = assertNotNull(repository.findDetailsById(rental.id, renterId))
+                    assertEquals(renterDetails, repository.findDetailsById(rental.id, actor))
+                } else {
+                    assertFailsWith<RentalAccessDeniedException> {
+                        repository.findDetailsById(rental.id, actor)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun missingRentalDetailsReturnNull() = rentalTest {
+        assertNull(repository.findDetailsById(Long.MAX_VALUE, renterId))
+    }
+
+    @Test
+    fun rejectsMismatchingCarIdWithoutSaving() = rentalTest {
+        assertFailsWith<IllegalArgumentException> { create(input.copy(carId = Long.MAX_VALUE)) }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun rejectsMalformedDatesWithoutSaving() = rentalTest {
+        for (invalid in listOf(input.copy(startAt = "invalid"), input.copy(endAt = "invalid"))) {
+            assertFailsWith<IllegalArgumentException> { create(invalid) }
+        }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun rejectsPastStartAndEmptyOrReversedPeriodsWithoutSaving() = rentalTest {
+        for (invalid in listOf(
+            input.copy(startAt = "2000-01-01T10:00:00"),
+            input.copy(endAt = input.startAt),
+            input.copy(endAt = "2100-11-01T09:00:00")
+        )) {
+            assertFailsWith<IllegalArgumentException> { create(invalid) }
+        }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun reportsMissingCarAndRenterWithoutSaving() = rentalTest {
+        assertFailsWith<RentalNotFoundException> {
+            repository.create(input.copy(carId = Long.MAX_VALUE), renterId, Long.MAX_VALUE)
+        }
+        assertFailsWith<RentalNotFoundException> { repository.create(input, Long.MAX_VALUE, carId) }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun rejectsUnavailableCarWithoutSaving() = rentalTest {
+        transaction(database) { Car[carId].isAvailable = false }
+        assertFailsWith<RentalUnavailableException> { create() }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun rejectsPriceAboveDatabaseMaximumWithoutSaving() = rentalTest {
+        transaction(database) { Car[carId].pricePerHour = BigDecimal("99999999.99") }
+        assertFailsWith<IllegalArgumentException> { create() }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun acceptsPriceAtDatabaseMaximum() = rentalTest {
+        transaction(database) { Car[carId].pricePerHour = BigDecimal("99999999.99") }
+        val result = create(input.copy(endAt = "2100-11-01T11:00:00"))
+        assertEquals("99999999.99", result.totalPrice)
+        assertEquals(result, repository.findById(result.id))
+    }
+
+    @Test
+    fun pendingConfirmedAndActiveRentalsBlockEveryKindOfOverlap() = rentalTest {
+        val periods = listOf(
+            input,
+            input.copy(startAt = "2100-11-01T09:00:00", endAt = "2100-11-01T10:30:00"),
+            input.copy(startAt = "2100-11-01T11:00:00", endAt = "2100-11-01T12:00:00"),
+            input.copy(startAt = "2100-11-01T10:15:00", endAt = "2100-11-01T11:00:00"),
+            input.copy(startAt = "2100-11-01T09:00:00", endAt = "2100-11-01T12:00:00")
+        )
+        for (status in listOf(RentalStatus.PENDING, RentalStatus.CONFIRMED, RentalStatus.ACTIVE)) {
+            val existing = seed(status)
+            for (period in periods) {
+                assertFailsWith<RentalUnavailableException>("$status must block $period") { create(period) }
+            }
+            transaction(database) { Rental[existing.id].status = RentalStatus.CANCELLED }
+        }
+        assertEquals(3, rentals().size)
+    }
+
+    @Test
+    fun rejectedCompletedAndCancelledRentalsDoNotBlockBooking() = rentalTest {
+        for (status in listOf(RentalStatus.REJECTED, RentalStatus.COMPLETED, RentalStatus.CANCELLED)) seed(status)
+        assertEquals(RentalStatus.PENDING, create().status)
+        assertEquals(4, rentals().size)
+    }
+
+    @Test
+    fun adjacentAndSeparatePeriodsAreAllowed() = rentalTest {
+        create()
+        create(input.copy(startAt = "2100-11-01T09:00:00", endAt = input.startAt))
+        create(input.copy(startAt = input.endAt, endAt = "2100-11-01T12:00:00"))
+        create(input.copy(startAt = "2100-11-02T10:00:00", endAt = "2100-11-02T11:00:00"))
+        assertEquals(4, rentals().size)
+    }
+
+    @Test
+    fun bookingsForAnotherCarDoNotBlockSamePeriod() = rentalTest {
+        create()
+        val other = Fixture()
+        assertEquals(RentalStatus.PENDING, other.create().status)
+    }
+
+    @Test
+    fun checksEverySourceAndTargetStatusAndPersistsOnlyAllowedTransitions() = rentalTest {
+        for (source in RentalStatus.entries) {
+            for (target in RentalStatus.entries) {
+                val seeded = seed(source)
+                val before = repository.findById(seeded.id)!!
+                val actor = if (target == RentalStatus.CANCELLED) renterId else ownerId
+                when {
+                    target == RentalStatus.CANCELLED && source in listOf(
+                        RentalStatus.PENDING, RentalStatus.CONFIRMED, RentalStatus.CANCELLED
+                    ) -> {
+                        val result = repository.changeStatus(before.id, target, actor)
+                        assertEquals(target, result.status, "$source -> $target")
+                        assertNotNull(result.cancelledAt)
+                        val saved = repository.findById(before.id)!!
+                        assertEquals(before.copy(status = target, cancelledAt = saved.cancelledAt), saved)
+                        if (source == RentalStatus.CANCELLED) assertEquals(before, saved)
+                    }
+                    target in listOf(RentalStatus.CONFIRMED, RentalStatus.REJECTED) && source == RentalStatus.PENDING -> {
+                        val result = repository.changeStatus(before.id, target, actor)
+                        assertEquals(before.copy(status = target), result)
+                        assertEquals(result, repository.findById(before.id))
+                    }
+                    target in listOf(RentalStatus.CONFIRMED, RentalStatus.REJECTED, RentalStatus.CANCELLED) -> {
+                        assertFailsWith<RentalUnavailableException>("$source -> $target") {
+                            repository.changeStatus(before.id, target, actor)
+                        }
+                        assertEquals(before, repository.findById(before.id))
+                    }
+                    else -> {
+                        assertFailsWith<IllegalArgumentException>("$source -> $target") {
+                            repository.changeStatus(before.id, target, actor)
+                        }
+                        assertEquals(before, repository.findById(before.id))
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun renterAndStrangerCannotApproveOrRejectAnyRental() = rentalTest {
+        for (source in RentalStatus.entries) {
+            val before = seed(source)
+            for (actor in listOf(renterId, strangerId)) {
+                for (target in listOf(RentalStatus.CONFIRMED, RentalStatus.REJECTED)) {
+                    assertFailsWith<RentalAccessDeniedException> { repository.changeStatus(before.id, target, actor) }
+                    assertEquals(before, repository.findById(before.id))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun ownerAndStrangerCannotCancelAnyRental() = rentalTest {
+        for (source in RentalStatus.entries) {
+            val before = seed(source)
+            for (actor in listOf(ownerId, strangerId)) {
+                assertFailsWith<RentalAccessDeniedException> {
+                    repository.changeStatus(before.id, RentalStatus.CANCELLED, actor)
+                }
+                assertEquals(before, repository.findById(before.id))
+            }
+        }
+    }
+
+    @Test
+    fun statusChangesReportMissingRental() = rentalTest {
+        for (status in RentalStatus.entries) {
+            assertFailsWith<RentalNotFoundException> { repository.changeStatus(Long.MAX_VALUE, status, ownerId) }
+        }
+    }
+
+    @Test
+    fun cancellationFreesPeriodForNewBookingAndCannotBeApprovedAgain() = rentalTest {
+        val existing = create()
+        repository.changeStatus(existing.id, RentalStatus.CONFIRMED, ownerId)
+        repository.changeStatus(existing.id, RentalStatus.CANCELLED, renterId)
+        assertFailsWith<RentalUnavailableException> {
+            repository.changeStatus(existing.id, RentalStatus.CONFIRMED, ownerId)
+        }
+        assertEquals(RentalStatus.PENDING, create().status)
+    }
+
+    @Test
+    fun cancellationRecordsCurrentTimeAndRepeatedRequestsPreserveIt() = rentalTest {
+        val existing = create()
+        val zone = TimeZone.of("Europe/Amsterdam")
+        // Allow for database timestamp precision when comparing the recorded time.
+        val earliest = (Clock.System.now() - 1.seconds).toLocalDateTime(zone)
+        repository.changeStatus(existing.id, RentalStatus.CANCELLED, renterId)
+        val latest = Clock.System.now().toLocalDateTime(zone)
+        val saved = repository.findById(existing.id)!!
+        val cancelledAt = LocalDateTime.parse(assertNotNull(saved.cancelledAt))
+        assertTrue(cancelledAt >= earliest && cancelledAt <= latest)
+        assertEquals(saved, repository.changeStatus(existing.id, RentalStatus.CANCELLED, renterId))
+        assertEquals(saved, repository.findById(existing.id))
+    }
+
+    @Test
+    fun concurrentBookingsCannotReserveSameCarAndPeriodTwice() = rentalTest {
+        val fixture = this
+        val gate = CompletableDeferred<Unit>()
+        val outcomes = coroutineScope {
+            val attempts = List(2) {
+                async(Dispatchers.IO) { gate.await(); runCatching { fixture.create() } }
+            }
+            gate.complete(Unit)
+            attempts.awaitAll()
+        }
+        assertEquals(1, outcomes.count { it.isSuccess })
+        assertIs<RentalUnavailableException>(outcomes.single { it.isFailure }.exceptionOrNull())
+        assertEquals(1, rentals().size)
+    }
+
+    @Test
+    fun concurrentOwnerDecisionsCannotOverwriteEachOther() = rentalTest {
+        val existing = create()
+        val gate = CompletableDeferred<Unit>()
+        val outcomes = coroutineScope {
+            val attempts = listOf(RentalStatus.CONFIRMED, RentalStatus.REJECTED).map { target ->
+                async(Dispatchers.IO) {
+                    gate.await()
+                    runCatching { repository.changeStatus(existing.id, target, ownerId) }
+                }
+            }
+            gate.complete(Unit)
+            attempts.awaitAll()
+        }
+        assertEquals(1, outcomes.count { it.isSuccess })
+        assertIs<RentalUnavailableException>(outcomes.single { it.isFailure }.exceptionOrNull())
+        assertEquals(outcomes.single { it.isSuccess }.getOrThrow(), repository.findById(existing.id))
+    }
+
+    @Test
+    fun concurrentApprovalCannotUndoRenterCancellation() = rentalTest {
+        val existing = create()
+        val gate = CompletableDeferred<Unit>()
+        val outcomes = coroutineScope {
+            val approval = async(Dispatchers.IO) {
+                gate.await()
+                runCatching { repository.changeStatus(existing.id, RentalStatus.CONFIRMED, ownerId) }
+            }
+            val cancellation = async(Dispatchers.IO) {
+                gate.await()
+                runCatching { repository.changeStatus(existing.id, RentalStatus.CANCELLED, renterId) }
+            }
+            gate.complete(Unit)
+            listOf(approval.await(), cancellation.await())
+        }
+        assertTrue(outcomes[1].isSuccess)
+        outcomes[0].exceptionOrNull()?.let { assertIs<RentalUnavailableException>(it) }
+        val saved = repository.findById(existing.id)!!
+        assertEquals(RentalStatus.CANCELLED, saved.status)
+        assertNotNull(saved.cancelledAt)
     }
 }

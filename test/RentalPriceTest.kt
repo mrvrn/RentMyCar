@@ -1,5 +1,6 @@
-package com.rentmycar.domain.rental
+package test
 
+import com.rentmycar.domain.rental.calculateRentalPrice
 import kotlinx.datetime.LocalDateTime
 import java.math.BigDecimal
 import kotlin.test.Test
@@ -37,5 +38,42 @@ class RentalPriceTest {
         assertFailsWith<IllegalArgumentException> {
             calculateRentalPrice(BigDecimal.TEN, start, LocalDateTime.parse("2026-11-01T09:00:00"))
         }
+    }
+
+    @Test
+    fun `rounds half cents up once on the final amount`() {
+        assertEquals(BigDecimal("0.01"), calculateRentalPrice(
+            BigDecimal("0.01"), start, LocalDateTime.parse("2026-11-01T10:30:00")
+        ))
+        assertEquals(BigDecimal("0.00"), calculateRentalPrice(
+            BigDecimal("0.01"), start, LocalDateTime.parse("2026-11-01T10:29:59")
+        ))
+    }
+
+    @Test
+    fun `includes seconds and nanoseconds in reserved duration`() {
+        assertEquals(BigDecimal("0.02"), calculateRentalPrice(
+            BigDecimal("36.00"), start, LocalDateTime.parse("2026-11-01T10:00:01.500000000")
+        ))
+        assertEquals(BigDecimal("0.01"), calculateRentalPrice(
+            BigDecimal("36000000.00"), start, LocalDateTime.parse("2026-11-01T10:00:00.000001")
+        ))
+    }
+
+    @Test
+    fun `uses supplied local clock duration across daylight saving changes`() {
+        assertEquals(BigDecimal("20.00"), calculateRentalPrice(
+            BigDecimal.TEN, LocalDateTime.parse("2026-03-29T01:00"), LocalDateTime.parse("2026-03-29T03:00")
+        ))
+        assertEquals(BigDecimal("20.00"), calculateRentalPrice(
+            BigDecimal.TEN, LocalDateTime.parse("2026-10-25T01:00"), LocalDateTime.parse("2026-10-25T03:00")
+        ))
+    }
+
+    @Test
+    fun `zero hourly rate produces zero total`() {
+        assertEquals(BigDecimal("0.00"), calculateRentalPrice(
+            BigDecimal.ZERO, start, LocalDateTime.parse("2026-11-02T10:00")
+        ))
     }
 }

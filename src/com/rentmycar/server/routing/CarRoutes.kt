@@ -19,6 +19,7 @@ private suspend fun ApplicationCall.carIdOrRespond(carRepository: ICarRepository
 
     if (id == null || carRepository.findById(id) == null) {
         respond(HttpStatusCode.BadRequest, "Invalid car ID")
+        return null
     }
 
     return id

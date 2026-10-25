@@ -46,7 +46,14 @@ fun Route.rentalRoutes(rentalRepository: IRentalRepository, userRepository: IUse
 
             route("/{id}") {
                 get {
-                    val rental = call.rentalOrRespond(rentalRepository) ?: return@get
+                    val id = call.parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid rental ID")
+                    val loggedInUserId = call.userIdOrRespond(userRepository) ?: return@get
+                    val rental = try {
+                        rentalRepository.findDetailsById(id, loggedInUserId)
+                    } catch (exception: RentalAccessDeniedException) {
+                        return@get call.respond(HttpStatusCode.Forbidden, exception.message.orEmpty())
+                    } ?: return@get call.respond(HttpStatusCode.NotFound, "Rental not found")
                     return@get call.respond(HttpStatusCode.OK, rental)
                 }
 

@@ -6,6 +6,7 @@ import com.rentmycar.domain.car.Car
 import com.rentmycar.domain.car.Cars
 import com.rentmycar.domain.rental.dto.CreateRentalDto
 import com.rentmycar.domain.rental.dto.RentalDto
+import com.rentmycar.domain.rental.dto.RentalDetailsDto
 import com.rentmycar.domain.rental.dto.RentalOverviewDto
 import com.rentmycar.domain.user.User
 import kotlinx.datetime.LocalDateTime
@@ -34,6 +35,14 @@ internal fun calculateRentalPrice(
 
 class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Rental) {
     override fun toDto(entity: Rental): RentalDto = entity.toDto()
+
+    override suspend fun findDetailsById(id: Long, loggedInUserId: Long): RentalDetailsDto? = withTransaction {
+        val rental = Rental.findById(id) ?: return@withTransaction null
+        if (rental.renter.id.value != loggedInUserId && rental.car.owner.id.value != loggedInUserId) {
+            throw RentalAccessDeniedException("Only the renter or car owner can view rental details")
+        }
+        rental.toDetailsDto()
+    }
 
     override suspend fun findAllByUserId(userId: Long): List<RentalOverviewDto> = withTransaction {
         Rental.find { Rentals.renterId eq userId }.map { it.toOverviewDto() }

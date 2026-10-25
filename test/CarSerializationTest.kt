@@ -17,7 +17,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 class CarSerializationTest {
     @Test
@@ -34,14 +34,22 @@ class CarSerializationTest {
         val response = client.get("/cars/1")
         assertEquals(HttpStatusCode.OK, response.status)
         val price = Json.parseToJsonElement(response.bodyAsText()).jsonObject.getValue("pricePerHour").jsonPrimitive
-        assertTrue(price.isString)
+        assertFalse(price.isString)
         assertEquals("12.50", price.content)
     }
 
     @Test
     fun createCarPriceRoundTripsWithoutPrecisionLoss() {
         val car = CreateCarDto(1, "Ford", "Puma", "TEST-PUMA",
-            "99999999.99".toBigDecimal(), 1, 1)
+            "12345678901234567890.123456789".toBigDecimal(), 1, 1)
         assertEquals(car, Json.decodeFromString<CreateCarDto>(Json.encodeToString(car)))
+    }
+
+    @Test
+    fun createCarAcceptsNumericPrice() {
+        val car = Json.decodeFromString<CreateCarDto>(
+            """{"ownerId":1,"brand":"Ford","type":"Puma","licensePlate":"TEST-PUMA","pricePerHour":12.50,"pickupId":1,"dropOffId":1}"""
+        )
+        assertEquals("12.50".toBigDecimal(), car.pricePerHour)
     }
 }

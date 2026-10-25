@@ -33,10 +33,13 @@ class MigrationsTest {
                 statement.executeUpdate("INSERT INTO cars (id, ownerId, brand, type, licensePlate, pricePerDay, pickupId, dropOffId) VALUES (1, 1, 'Test', 'Test', 'TEST-1', 19.99, 1, 1)")
             }
         }
-        assertEquals(1, migrateDatabase(settings).migrationsExecuted)
+        val remainingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().substringBefore("__").removePrefix("V") > "20261013131505919" }
+        assertEquals(remainingMigrations, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->
-                statement.executeQuery("SELECT pricePerDay FROM cars WHERE id = 1").use { rows ->
+                statement.executeQuery("SELECT pricePerHour FROM cars WHERE id = 1").use { rows ->
                     assertTrue(rows.next())
                     assertEquals("19.99".toBigDecimal(), rows.getBigDecimal(1))
                     assertEquals("DECIMAL", rows.metaData.getColumnTypeName(1))
@@ -44,12 +47,12 @@ class MigrationsTest {
                     assertEquals(2, rows.metaData.getScale(1))
                 }
             }
-            connection.prepareStatement("UPDATE cars SET pricePerDay = ? WHERE id = 1").use { statement ->
+            connection.prepareStatement("UPDATE cars SET pricePerHour = ? WHERE id = 1").use { statement ->
                 statement.setBigDecimal(1, "0.10".toBigDecimal())
                 assertEquals(1, statement.executeUpdate())
             }
             connection.createStatement().use { statement ->
-                statement.executeQuery("SELECT pricePerDay FROM cars WHERE id = 1").use { rows ->
+                statement.executeQuery("SELECT pricePerHour FROM cars WHERE id = 1").use { rows ->
                     assertTrue(rows.next())
                     assertEquals("0.10".toBigDecimal(), rows.getBigDecimal(1))
                 }

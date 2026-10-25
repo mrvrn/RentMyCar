@@ -5,11 +5,13 @@
 3. Set the collection variables `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`. The owner credentials must belong to the owner of the selected car. Choose an existing available car with no booking during the test period. The API has no car creation endpoint; add a car and its related records to your development database if necessary.
 4. Run the collection in order, with one iteration, using Collection Runner.
 
-Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses that token and generates a two-hour period seven days ahead. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`.
+Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses `POST /cars/{{carId}}/rental` with that token and generates a two-hour period seven days ahead. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`. All creation and rebooking requests use this car route.
 
 For manual use, send requests 01, 02, and 04 in order. To log in with an existing account, set `email` and `password`, skip registration, and send request 02. Avoid environment variables named `email`, `password`, `token`, `startAt`, or `endAt`, since they override collection variables.
 
-The 35 requests cover registration, login, car lookup, rental creation, overlapping bookings, missing authentication, reversed dates, duplicate registration, invalid credentials, and invalid registration data. Status tests also cover owner login, renter access denied, unsupported transitions, unknown enum values, invalid and missing rental IDs, rejection, rebooking the rejected period, confirmation, and attempts to change decided reservations.
+The 89 requests cover registration, login, profiles, car lookup, rental creation, overlapping bookings, missing authentication, reversed dates, duplicate registration, invalid credentials, and invalid registration data. Status tests also cover owner login, renter access denied, unsupported transitions, unknown enum values, invalid and missing rental IDs, rejection, rebooking the rejected period, confirmation, and attempts to change decided reservations.
+
+Request 02a verifies that a newly registered renter receives an empty reservation list before making any bookings. Request 03 saves the car's hourly rate, and request 04 checks that the two-hour total matches that rate and the renter ID matches the authenticated user. Request 02 extracts `userId` from the returned JWT for these checks; the API remains responsible for verifying its signature.
 
 Requests 18 and 21 use `PATCH /rentals/{{rentalId}}/status` with a JSON body such as `{"status":"CONFIRMED"}` or `{"status":"REJECTED"}`. Owner login saves a separate `ownerToken`; the renter's `token` is preserved. Request 20 creates a replacement reservation for the rejected period and saves its ID in `rentalId`, so each successful decision starts from `PENDING`. For manual use, create a reservation, run request 13, then choose request 18 or 21.
 
@@ -17,7 +19,23 @@ Requests 23–33 test `PATCH /rentals/{{rentalId}}/cancel` without a body. They 
 
 Requests 34–35 are optional checks for `ACTIVE` and `COMPLETED` rentals. Set `activeRentalId` and `completedRentalId` to existing rentals belonging to the logged-in renter. They must already have those statuses: this API does not expose transitions to `ACTIVE` or `COMPLETED`. Each request skips itself when its ID is blank; a configured fixture must return 409. For a fresh registration, existing fixtures belong to a different user: use that fixture renter's `email` and `password` with request 02 and run 34–35 manually.
 
-Runs create persistent users and rentals, ending with the test reservations rejected or cancelled after request 33. Repeated runs can still overlap with other existing bookings; use a different car or remove previous test bookings from your development database. No cleanup endpoint is available. A 404 on car lookup means the selected car does not exist; a 409 on creation means it is unavailable or already booked. JWTs expire after one hour. Request 02 refreshes the renter's `token`; request 13 refreshes the separate `ownerToken`. Avoid environment variables that shadow `ownerEmail`, `ownerPassword`, `ownerToken`, `rentalId`, `rejectedRentalId`, or `cancelledAt`. Clear passwords and saved tokens before sharing an exported collection.
+Requests 36–45 cover `GET /rentals/{{rentalId}}` and `GET /rentals`. They check the full rental details, the rejected and cancelled reservations in the renter's list, the nested car summary (`id`, `brand`, `type`, and nullable/omitted `pictures`), and that the owner's list excludes the renter's reservations. They also check missing authentication, nonexistent rentals (404), and nonnumeric, zero, negative, and overflowing IDs (400). These requests use the IDs and tokens saved earlier in the run; the final `rentalId` refers to the reservation cancelled in request 33.
+
+Requests 46–54 check the car-route creation body against its URL, past and equal dates, malformed and incomplete rental bodies, invalid car IDs, malformed and missing status fields, and rejection of `CANCELLED` through the owner status endpoint. Cancellation uses the separate `/cancel` endpoint. These checks do not create additional reservations.
+
+Request 55 verifies that the car owner can view reservation details for their car. The renter and car owner can read those details; unrelated users receive 403.
+
+Requests 56–61 cover the user's own profile, absence of password fields, denial of another user's profile, missing authentication, invalid user IDs, and the current logout behavior. Logout returns 501 and does not revoke the JWT; request 61 verifies that the token still works.
+
+Requests 62–74 cover blank required fields, oversized names, short/blank passwords, the 72-byte UTF-8 password limit, malformed or incomplete registration JSON, nonexistent numeric car IDs for lookup and booking, and malformed rental dates.
+
+Requests 75–80 register and log in a second, unrelated user. They verify that this user cannot read, cancel, or approve the renter's reservation and receives an empty personal reservation list. This creates another persistent user per run. The renter and owner tokens are preserved.
+
+Requests 81–87 reject malformed JWTs on every protected route type and a valid token with a tampered signature. These checks do not require the signing secret. Expired signed tokens and concurrent booking behavior remain covered by the Kotlin test suite rather than this sequential collection.
+
+Request 88 is optional: set `unavailableCarId` to an existing car with `isAvailable=false` to verify that booking it returns 409 with `Car is unavailable`. It skips when no fixture ID is provided. No availability-management endpoints are tested because issue #22 is not implemented.
+
+Runs create persistent users and rentals, ending with the test reservations rejected or cancelled after request 33. Repeated runs can still overlap with other existing bookings; use a different car or remove previous test bookings from your development database. No cleanup endpoint is available. A 400 on car lookup can mean the selected car does not exist; a 409 on creation means it is unavailable or already booked. JWTs expire after one hour. Request 02 refreshes the renter's `token`; request 13 refreshes the separate `ownerToken`. Avoid environment variables that shadow generated values such as `ownerToken`, `rentalId`, `rejectedRentalId`, `cancelledAt`, `userId`, `strangerEmail`, `strangerToken`, `invalidToken`, or `pricePerHourCents`. Clear passwords and saved tokens before sharing an exported collection.
 
 With Newman installed, run from the project root:
 

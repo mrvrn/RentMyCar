@@ -79,6 +79,36 @@
       "key": "completedRentalId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "strangerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "strangerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invalidToken",
+      "value": "invalid.jwt.token",
+      "type": "string"
+    },
+    {
+      "key": "pricePerHourCents",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "unavailableCarId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -117,6 +147,9 @@
               "pm.collectionVariables.unset('ownerToken');",
               "pm.collectionVariables.unset('rentalId');",
               "pm.collectionVariables.unset('rejectedRentalId');",
+              "pm.collectionVariables.unset('userId');",
+              "pm.collectionVariables.unset('strangerToken');",
+              "pm.collectionVariables.unset('pricePerHourCents');",
               "pm.collectionVariables.unset('cancelledAt');"
             ]
           }
@@ -176,8 +209,42 @@
               "if (pm.response.code === 200) {",
               "  const data = pm.response.json();",
               "  pm.test('JWT returned', () => pm.expect(data.token).to.be.a('string').and.match(/^[^.]+\\.[^.]+\\.[^.]+$/));",
-              "  if (typeof data.token === 'string') pm.collectionVariables.set('token', data.token);",
+              "  if (typeof data.token === 'string') {",
+              "    pm.collectionVariables.set('token', data.token);",
+              "    const payload = JSON.parse(require('buffer').Buffer.from(data.token.split('.')[1], 'base64').toString());",
+              "    pm.collectionVariables.set('userId', payload.userId);",
+              "  }",
               "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02a New renter has no reservations",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Empty reservation list', () => pm.expect(pm.response.json()).to.eql([]));"
             ]
           }
         }
@@ -204,6 +271,8 @@
               "  const data = pm.response.json();",
               "  pm.test('Correct car', () => pm.expect(data.id).to.eql(Number(pm.variables.get('carId'))));",
               "  pm.test('Car is available', () => pm.expect(data.isAvailable).to.eql(true));",
+              "  pm.test('Hourly price is valid', () => pm.expect(data.pricePerHour).to.be.a('number').and.at.least(0));",
+              "  pm.collectionVariables.set('pricePerHourCents', Math.round(data.pricePerHour * 100));",
               "}"
             ]
           }
@@ -211,10 +280,10 @@
       ]
     },
     {
-      "name": "04 Create rental",
+      "name": "04 Create rental through car route",
       "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -273,6 +342,11 @@
               "    pm.expect(Date.parse(data.endAt + 'Z')).to.eql(Date.parse(pm.variables.get('endAt') + 'Z'));",
               "  });",
               "  pm.test('Total price returned', () => pm.expect(data.totalPrice).to.match(/^\\d+\\.\\d{2}$/));",
+              "  pm.test('Authenticated renter is used', () => pm.expect(data.renterId).to.eql(Number(pm.variables.get('userId'))));",
+              "  pm.test('Two hours charged at the hourly rate', () => {",
+              "    const cents = Number(pm.variables.get('pricePerHourCents')) * 2;",
+              "    pm.expect(data.totalPrice).to.eql((cents / 100).toFixed(2));",
+              "  });",
               "  pm.collectionVariables.set('rentalId', data.id);",
               "}"
             ]
@@ -284,7 +358,7 @@
       "name": "05 Reject overlapping rental",
       "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -328,7 +402,7 @@
       "name": "06 Reject rental without token",
       "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
         "auth": {
           "type": "noauth"
         },
@@ -365,7 +439,7 @@
       "name": "07 Reject reversed dates",
       "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -920,7 +994,7 @@
       "name": "20 Rebook rejected period",
       "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -1358,7 +1432,7 @@
       "name": "31 Rebook cancelled period",
       "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/rentals/{{carId}}",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -1564,6 +1638,2038 @@
               "pm.test('COMPLETED rental cannot be cancelled', () => {",
               "  pm.expect(pm.response.text()).to.eql('Rejected, active or completed rentals cannot be cancelled');",
               "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "36 Get rental details",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct rental returned', () => pm.expect(data.id).to.eql(Number(pm.variables.get('rentalId'))));",
+              "  pm.test('Status updated to CANCELLED', () => pm.expect(data.status).to.eql('CANCELLED'));",
+              "}",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Rental details contain car, renter, dates and price', () => {",
+              "    pm.expect(data.car.id).to.eql(Number(pm.variables.get('carId')));",
+              "    pm.expect(data.car.brand).to.be.a('string');",
+              "    pm.expect(data.car.type).to.be.a('string');",
+              "    pm.expect(data).not.to.have.property('carId');",
+              "    pm.expect(data.renterId).to.be.a('number').and.above(0);",
+              "    pm.expect(Date.parse(data.startAt + 'Z')).to.eql(Date.parse(pm.variables.get('startAt') + 'Z'));",
+              "    pm.expect(Date.parse(data.endAt + 'Z')).to.eql(Date.parse(pm.variables.get('endAt') + 'Z'));",
+              "    pm.expect(data.totalPrice).to.match(/^\\d+\\.\\d{2}$/);",
+              "    pm.expect(data.createdAt).to.be.a('string');",
+              "    pm.expect(data.cancelledAt).to.be.a('string');",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "37 List renter reservations with car summaries",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Rental overview is an array', () => pm.expect(data).to.be.an('array'));",
+              "  pm.test('Created reservations are included with their final statuses', () => {",
+              "    const cancelled = data.find(row => row.id === Number(pm.variables.get('rentalId')));",
+              "    const rejected = data.find(row => row.id === Number(pm.variables.get('rejectedRentalId')));",
+              "    pm.expect(cancelled).to.be.an('object');",
+              "    pm.expect(cancelled.status).to.eql('CANCELLED');",
+              "    pm.expect(rejected).to.be.an('object');",
+              "    pm.expect(rejected.status).to.eql('REJECTED');",
+              "  });",
+              "  pm.test('Each overview contains rental dates, price and a nested car summary', () => {",
+              "    data.forEach(row => {",
+              "      pm.expect(row.id).to.be.a('number').and.above(0);",
+              "      pm.expect(Number.isFinite(Date.parse(row.startAt + 'Z'))).to.eql(true);",
+              "      pm.expect(Number.isFinite(Date.parse(row.endAt + 'Z'))).to.eql(true);",
+              "      pm.expect(row.totalPrice).to.match(/^\\d+\\.\\d{2}$/);",
+              "      pm.expect(row.car.id).to.be.a('number').and.above(0);",
+              "      pm.expect(row.car.brand).to.be.a('string');",
+              "      pm.expect(row.car.type).to.be.a('string');",
+              "      // Kotlin serialization may omit a null optional picture.",
+              "      if (row.car.pictures != null) pm.expect(row.car.pictures).to.be.a('string');",
+              "    });",
+              "    const created = data.find(row => row.id === Number(pm.variables.get('rentalId')));",
+              "    pm.expect(created.car.id).to.eql(Number(pm.variables.get('carId')));",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "38 Owner list excludes renter reservations",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Only reservations rented by the logged-in owner are listed', () => {",
+              "    pm.expect(data).to.be.an('array');",
+              "    const ids = data.map(row => row.id);",
+              "    pm.expect(ids).not.to.include(Number(pm.variables.get('rentalId')));",
+              "    pm.expect(ids).not.to.include(Number(pm.variables.get('rejectedRentalId')));",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "39 Reject rental list without token",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "40 Reject rental details without token",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "41 Missing rental details return not found",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/9223372036854775807",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              "pm.test('Missing rental message', () => pm.expect(pm.response.text()).to.eql('Rental not found'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "42 Reject invalid rental detail ID (invalid)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/invalid",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Invalid rental ID message', () => pm.expect(pm.response.text()).to.eql('Invalid rental ID'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "43 Reject invalid rental detail ID (0)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/0",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Invalid rental ID message', () => pm.expect(pm.response.text()).to.eql('Invalid rental ID'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "44 Reject invalid rental detail ID (-1)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/-1",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Invalid rental ID message', () => pm.expect(pm.response.text()).to.eql('Invalid rental ID'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "45 Reject invalid rental detail ID (9223372036854775808)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/9223372036854775808",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Invalid rental ID message', () => pm.expect(pm.response.text()).to.eql('Invalid rental ID'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "46 Reject car ID mismatch in rental body",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": 0,\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Car must match URL', () => pm.expect(pm.response.text()).to.eql('Car ID must match the car in the URL'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "47 Reject rental starting in the past",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"2000-01-01T10:00:00\",\n  \"endAt\": \"2000-01-01T12:00:00\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "48 Reject rental with equal start and end",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{startAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "49 Reject malformed rental body",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "50 Reject incomplete rental body",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "51 Reject invalid car ID on rental creation",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/invalid/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "52 Reject malformed status body",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "53 Reject missing status field",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "54 Reject cancellation through status endpoint",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CANCELLED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "55 Owner can get rental details",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Correct rental returned', () => pm.expect(data.id).to.eql(Number(pm.variables.get('rentalId'))));",
+              "  pm.test('Status updated to CANCELLED', () => pm.expect(data.status).to.eql('CANCELLED'));",
+              "}",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.test('Owner receives the car summary', () => {",
+              "    pm.expect(data.car.id).to.eql(Number(pm.variables.get('carId')));",
+              "    pm.expect(data.car.brand).to.be.a('string');",
+              "    pm.expect(data.car.type).to.be.a('string');",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "56 Get own profile without exposing password",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/users/{{userId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "const data = pm.response.json();",
+              "pm.test('Own profile returned', () => {",
+              "  pm.expect(data.id).to.eql(Number(pm.variables.get('userId')));",
+              "  pm.expect(data.email).to.eql(pm.variables.get('email'));",
+              "  pm.expect(data.name).to.eql('Postman Test User');",
+              "  pm.expect(data.phone).to.eql('+31612345678');",
+              "  pm.expect(data.address).to.eql('Teststraat 1, Amsterdam');",
+              "});",
+              "pm.test('Password fields are excluded', () => {",
+              "  pm.expect(data).not.to.have.property('password');",
+              "  pm.expect(data).not.to.have.property('passwordHash');",
+              "});",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "57 Reject another user profile",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/users/{{userId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "58 Reject profile without token",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/users/{{userId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "59 Reject invalid user ID",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/users/invalid",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "60 Logout reports current unsupported behavior",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/logout",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 501', () => pm.response.to.have.status(501));",
+              "pm.test('Logout limitation explained', () => pm.expect(pm.response.text()).to.eql('Server-side logout is not implemented. Discard the token on the client; it remains valid until expiry.'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "61 Token remains valid after unsupported logout",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/users/{{userId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "62 Reject registration with blank name",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"   \",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation message', () => pm.expect(pm.response.text()).to.eql(\"Name, email, phone and address are required\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "63 Reject registration with blank phone",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{email}}\",\n  \"phone\": \" \",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation message', () => pm.expect(pm.response.text()).to.eql(\"Name, email, phone and address are required\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "64 Reject registration with blank address",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \" \",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation message', () => pm.expect(pm.response.text()).to.eql(\"Name, email, phone and address are required\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "65 Reject registration with oversized name",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation message', () => pm.expect(pm.response.text()).to.eql(\"Name, email, phone and address must be at most 100 characters\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "66 Reject registration with short password",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"short\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation message', () => pm.expect(pm.response.text()).to.eql(\"Password must contain at least 8 characters\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "67 Reject registration with blank password",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"        \"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation message', () => pm.expect(pm.response.text()).to.eql(\"Password must contain at least 8 characters\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "68 Reject registration with oversized UTF-8 password",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"ééééééééééééééééééééééééééééééééééééé\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation message', () => pm.expect(pm.response.text()).to.eql(\"Password must be at most 72 UTF-8 bytes\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "69 Reject malformed registration JSON",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "70 Reject missing registration fields",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "71 Reject missing car lookup",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/9223372036854775807",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "72 Reject booking a missing car",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/9223372036854775807/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "73 Reject malformed startAt",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"invalid-date\",\n  \"endAt\": \"{{endAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "74 Reject malformed endAt",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"invalid-date\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "75 Register unrelated user",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{strangerEmail}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('strangerEmail', 'postman.stranger.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');",
+              "pm.collectionVariables.unset('strangerToken');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "76 Login unrelated user",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{strangerEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "const data = pm.response.json();",
+              "pm.test('Stranger token returned', () => pm.expect(data.token).to.be.a('string'));",
+              "pm.collectionVariables.set('strangerToken', data.token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "77 Reject unrelated user reading rental",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{strangerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "78 Reject unrelated user cancelling rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{strangerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "79 Reject unrelated user deciding rental",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{strangerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "80 Unrelated user list excludes all renter reservations",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{strangerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Unrelated user has empty list', () => pm.expect(pm.response.json()).to.eql([]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "81 Reject malformed token on profile",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/users/{{userId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{invalidToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('invalidToken', 'invalid.jwt.token');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "82 Reject malformed token on rental list",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{invalidToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('invalidToken', 'invalid.jwt.token');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "83 Reject malformed token on rental details",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{invalidToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('invalidToken', 'invalid.jwt.token');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "84 Reject malformed token on booking",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{carId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{invalidToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('invalidToken', 'invalid.jwt.token');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "85 Reject malformed token on cancellation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{invalidToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('invalidToken', 'invalid.jwt.token');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "86 Reject malformed token on owner decision",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{invalidToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('invalidToken', 'invalid.jwt.token');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "87 Reject token with tampered signature",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{invalidToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const parts = pm.variables.get('token').split('.');",
+              "parts[2] = (parts[2][0] === 'A' ? 'B' : 'A') + parts[2].slice(1);",
+              "pm.collectionVariables.set('invalidToken', parts.join('.'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "88 Reject unavailable car booking (optional)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{unavailableCarId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"carId\":{{unavailableCarId}},\"startAt\":\"{{startAt}}\",\"endAt\":\"{{endAt}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('unavailableCarId')) {",
+              "  console.info('Skipping unavailable car check: set unavailableCarId to an existing car with isAvailable=false.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              "pm.test('Car is explicitly unavailable', () => pm.expect(pm.response.text()).to.eql('Car is unavailable'));"
             ]
           }
         }
