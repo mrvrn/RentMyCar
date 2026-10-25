@@ -32,12 +32,12 @@
     },
     {
       "key": "ownerEmail",
-      "value": "",
+      "value": "owner@example.com",
       "type": "string"
     },
     {
       "key": "ownerPassword",
-      "value": "",
+      "value": "Owner12345",
       "type": "string"
     },
     {
@@ -333,7 +333,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "const start = new Date(Date.now() + 7 * 86400000);",
+              "const dayOffset = 7 + Math.floor(Math.random() * 365);",
+              "const start = new Date(Date.now() + dayOffset * 86400000);",
               "start.setUTCHours(10, 0, 0, 0);",
               "pm.collectionVariables.set('startAt', start.toISOString().slice(0, 19));",
               "pm.collectionVariables.set('endAt', new Date(start.getTime() + 7200000).toISOString().slice(0, 19));",
@@ -2957,7 +2958,30 @@
       ]
     },
     {
-      "name": "71 Reject missing car lookup",
+      "name": "71 Reject nonnumeric car lookup",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/abc",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "72 Reject missing car lookup",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/9223372036854775807",
@@ -2980,7 +3004,7 @@
       ]
     },
     {
-      "name": "72 Reject booking a missing car",
+      "name": "73 Reject booking a missing car",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/9223372036854775807/rental",
@@ -3024,7 +3048,7 @@
       ]
     },
     {
-      "name": "73 Reject malformed startAt",
+      "name": "74 Reject malformed startAt",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{carId}}/rental",
@@ -3068,7 +3092,7 @@
       ]
     },
     {
-      "name": "74 Reject malformed endAt",
+      "name": "75 Reject malformed endAt",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{carId}}/rental",
@@ -3112,7 +3136,7 @@
       ]
     },
     {
-      "name": "75 Register unrelated user",
+      "name": "76 Register unrelated user",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -3159,7 +3183,7 @@
       ]
     },
     {
-      "name": "76 Login unrelated user",
+      "name": "77 Login unrelated user",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3200,7 +3224,7 @@
       ]
     },
     {
-      "name": "77 Reject unrelated user reading rental",
+      "name": "78 Reject unrelated user reading rental",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals/{{rentalId}}",
@@ -3230,7 +3254,7 @@
       ]
     },
     {
-      "name": "78 Reject unrelated user cancelling rental",
+      "name": "79 Reject unrelated user cancelling rental",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
@@ -3260,7 +3284,7 @@
       ]
     },
     {
-      "name": "79 Reject unrelated user deciding rental",
+      "name": "80 Reject unrelated user deciding rental",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
@@ -3304,7 +3328,7 @@
       ]
     },
     {
-      "name": "80 Unrelated user list excludes all renter reservations",
+      "name": "81 Unrelated user list excludes all renter reservations",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals",
@@ -3334,7 +3358,7 @@
       ]
     },
     {
-      "name": "81 Reject malformed token on profile",
+      "name": "82 Reject malformed token on profile",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/users/{{userId}}",
@@ -3373,7 +3397,7 @@
       ]
     },
     {
-      "name": "82 Reject malformed token on rental list",
+      "name": "83 Reject malformed token on rental list",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals",
@@ -3412,7 +3436,7 @@
       ]
     },
     {
-      "name": "83 Reject malformed token on rental details",
+      "name": "84 Reject malformed token on rental details",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals/{{rentalId}}",
@@ -3451,7 +3475,7 @@
       ]
     },
     {
-      "name": "84 Reject malformed token on booking",
+      "name": "85 Reject malformed token on booking",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{carId}}/rental",
@@ -3504,7 +3528,7 @@
       ]
     },
     {
-      "name": "85 Reject malformed token on cancellation",
+      "name": "86 Reject malformed token on cancellation",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
@@ -3543,7 +3567,7 @@
       ]
     },
     {
-      "name": "86 Reject malformed token on owner decision",
+      "name": "87 Reject malformed token on owner decision",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
@@ -3596,7 +3620,7 @@
       ]
     },
     {
-      "name": "87 Reject token with tampered signature",
+      "name": "88 Reject token with tampered signature",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals",
@@ -3637,7 +3661,7 @@
       ]
     },
     {
-      "name": "88 Reject unavailable car booking (optional)",
+      "name": "89 Reject unavailable car booking (optional)",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{unavailableCarId}}/rental",
@@ -3693,7 +3717,7 @@
       ]
     },
     {
-      "name": "89 Reject login with malformed JSON",
+      "name": "90 Reject login with malformed JSON",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3730,7 +3754,7 @@
       ]
     },
     {
-      "name": "90 Reject login with missing fields",
+      "name": "91 Reject login with missing fields",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3767,7 +3791,7 @@
       ]
     },
     {
-      "name": "91 Reject login with missing password",
+      "name": "92 Reject login with missing password",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3804,7 +3828,7 @@
       ]
     },
     {
-      "name": "92 Reject login with missing email",
+      "name": "93 Reject login with missing email",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3841,7 +3865,7 @@
       ]
     },
     {
-      "name": "93 Reject login with null email",
+      "name": "94 Reject login with null email",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3878,7 +3902,7 @@
       ]
     },
     {
-      "name": "94 Reject oversized UTF-8 login password",
+      "name": "95 Reject oversized UTF-8 login password",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3915,7 +3939,7 @@
       ]
     },
     {
-      "name": "95 Register password at bcrypt byte boundary",
+      "name": "96 Register password at bcrypt byte boundary",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -3961,7 +3985,7 @@
       ]
     },
     {
-      "name": "96 Login at bcrypt byte boundary",
+      "name": "97 Login at bcrypt byte boundary",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -3998,7 +4022,7 @@
       ]
     },
     {
-      "name": "97 Reject longer login password sharing valid 72-byte prefix",
+      "name": "98 Reject longer login password sharing valid 72-byte prefix",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -4035,7 +4059,7 @@
       ]
     },
     {
-      "name": "98 List public cars with expected fields",
+      "name": "99 List public cars with expected fields",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars",
@@ -4067,7 +4091,7 @@
       ]
     },
     {
-      "name": "99 Create dedicated management car with normalized plate",
+      "name": "100 Create dedicated management car with normalized plate",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4089,7 +4113,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"  {{managedPlate}}  \",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"  {{managedPlate}}  \",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4131,7 +4155,7 @@
       ]
     },
     {
-      "name": "100 Reject normalized duplicate plate on create",
+      "name": "101 Reject normalized duplicate plate on create",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4153,7 +4177,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{normalizedManagedPlate}}\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{normalizedManagedPlate}}\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4175,7 +4199,7 @@
       ]
     },
     {
-      "name": "101 Reject car creation without token",
+      "name": "102 Reject car creation without token",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4190,7 +4214,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"UNAUTHORIZED\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"UNAUTHORIZED\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4212,7 +4236,7 @@
       ]
     },
     {
-      "name": "102 Reject renter creating car",
+      "name": "103 Reject renter creating car",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4234,7 +4258,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"UNAUTHORIZED\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"UNAUTHORIZED\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4256,7 +4280,7 @@
       ]
     },
     {
-      "name": "103 Reject PUT car without token",
+      "name": "104 Reject PUT car without token",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4293,7 +4317,7 @@
       ]
     },
     {
-      "name": "104 Reject renter PUT car",
+      "name": "105 Reject renter PUT car",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4337,7 +4361,7 @@
       ]
     },
     {
-      "name": "105 Reject DELETE car without token",
+      "name": "106 Reject DELETE car without token",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4360,7 +4384,7 @@
       ]
     },
     {
-      "name": "106 Reject renter DELETE car",
+      "name": "107 Reject renter DELETE car",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4390,7 +4414,7 @@
       ]
     },
     {
-      "name": "107 Authorization failures preserve management car",
+      "name": "108 Authorization failures preserve management car",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4414,7 +4438,7 @@
       ]
     },
     {
-      "name": "108 Reject car create with blank brand",
+      "name": "109 Reject car create with blank brand",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4436,7 +4460,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\" \",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\" \",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4458,7 +4482,7 @@
       ]
     },
     {
-      "name": "109 Reject car update with blank brand",
+      "name": "110 Reject car update with blank brand",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4502,7 +4526,7 @@
       ]
     },
     {
-      "name": "110 Reject car create with blank type",
+      "name": "111 Reject car create with blank type",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4524,7 +4548,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\" \",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\" \",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4546,7 +4570,7 @@
       ]
     },
     {
-      "name": "111 Reject car update with blank type",
+      "name": "112 Reject car update with blank type",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4590,7 +4614,7 @@
       ]
     },
     {
-      "name": "112 Reject car create with blank plate",
+      "name": "113 Reject car create with blank plate",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4612,7 +4636,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\" \",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\" \",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4634,7 +4658,7 @@
       ]
     },
     {
-      "name": "113 Reject car update with blank plate",
+      "name": "114 Reject car update with blank plate",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4678,7 +4702,7 @@
       ]
     },
     {
-      "name": "114 Reject car create with zero price",
+      "name": "115 Reject car create with zero price",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4700,7 +4724,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":0,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":0,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4722,7 +4746,7 @@
       ]
     },
     {
-      "name": "115 Reject car update with zero price",
+      "name": "116 Reject car update with zero price",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4766,7 +4790,7 @@
       ]
     },
     {
-      "name": "116 Reject car create with negative price",
+      "name": "117 Reject car create with negative price",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4788,7 +4812,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":-1,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":-1,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4810,7 +4834,7 @@
       ]
     },
     {
-      "name": "117 Reject car update with negative price",
+      "name": "118 Reject car update with negative price",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4854,7 +4878,7 @@
       ]
     },
     {
-      "name": "118 Reject car create with price overflow",
+      "name": "119 Reject car create with price overflow",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4876,7 +4900,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":100000000,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":100000000,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4898,7 +4922,7 @@
       ]
     },
     {
-      "name": "119 Reject car update with price overflow",
+      "name": "120 Reject car update with price overflow",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -4942,7 +4966,7 @@
       ]
     },
     {
-      "name": "120 Reject car create with extra price precision",
+      "name": "121 Reject car create with extra price precision",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -4964,7 +4988,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":1.001,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":1.001,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -4986,7 +5010,7 @@
       ]
     },
     {
-      "name": "121 Reject car update with extra price precision",
+      "name": "122 Reject car update with extra price precision",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5030,7 +5054,7 @@
       ]
     },
     {
-      "name": "122 Reject car create with missing pickup",
+      "name": "123 Reject car create with missing pickup",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -5052,7 +5076,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":9223372036854775000,\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":9223372036854775000,\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -5074,7 +5098,7 @@
       ]
     },
     {
-      "name": "123 Reject car update with missing pickup",
+      "name": "124 Reject car update with missing pickup",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5118,7 +5142,7 @@
       ]
     },
     {
-      "name": "124 Reject car create with missing drop-off",
+      "name": "125 Reject car create with missing drop-off",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -5140,7 +5164,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":9223372036854775000}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":9223372036854775000,\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -5162,7 +5186,7 @@
       ]
     },
     {
-      "name": "125 Reject car update with missing drop-off",
+      "name": "126 Reject car update with missing drop-off",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5206,7 +5230,7 @@
       ]
     },
     {
-      "name": "126 Reject malformed car creation",
+      "name": "127 Reject malformed car creation",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -5250,7 +5274,7 @@
       ]
     },
     {
-      "name": "127 Reject incomplete car creation",
+      "name": "128 Reject incomplete car creation",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -5294,7 +5318,7 @@
       ]
     },
     {
-      "name": "128 Reject malformed car update",
+      "name": "129 Reject malformed car update",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5338,7 +5362,7 @@
       ]
     },
     {
-      "name": "129 Failed multi-field update rolls back all fields",
+      "name": "130 Failed multi-field update rolls back all fields",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5382,7 +5406,7 @@
       ]
     },
     {
-      "name": "130 Rejected updates preserve stored fields",
+      "name": "131 Rejected updates preserve stored fields",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5411,7 +5435,7 @@
       ]
     },
     {
-      "name": "131 Reject PUT car invalid ID",
+      "name": "132 Reject PUT car invalid ID",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/invalid",
@@ -5455,7 +5479,7 @@
       ]
     },
     {
-      "name": "132 Reject PUT missing car",
+      "name": "133 Reject PUT missing car",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/9223372036854775807",
@@ -5499,7 +5523,7 @@
       ]
     },
     {
-      "name": "133 Reject DELETE car invalid ID",
+      "name": "134 Reject DELETE car invalid ID",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/invalid",
@@ -5529,7 +5553,7 @@
       ]
     },
     {
-      "name": "134 Reject DELETE missing car",
+      "name": "135 Reject DELETE missing car",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/9223372036854775807",
@@ -5559,7 +5583,7 @@
       ]
     },
     {
-      "name": "135 Create second management car",
+      "name": "136 Create second management car",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -5581,7 +5605,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-second\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-second\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -5605,7 +5629,7 @@
       ]
     },
     {
-      "name": "136 Reject duplicate plate update",
+      "name": "137 Reject duplicate plate update",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{secondManagedCarId}}",
@@ -5649,7 +5673,7 @@
       ]
     },
     {
-      "name": "137 Update every editable car field",
+      "name": "138 Update every editable car field",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5671,7 +5695,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Updated\",\"type\":\"Estate\",\"licensePlate\":\" {{managedPlate}}-updated \",\"pricePerHour\":22.25,\"pickupId\":{{fixtureDropOffId}},\"dropOffId\":{{fixturePickupId}},\"pictures\":[\"https://example.com/updated.png\"],\"isAvailable\":true}",
+          "raw": "{\"brand\":\"Updated\",\"type\":\"Estate\",\"licensePlate\":\" {{managedPlate}}-updated \",\"pricePerHour\":22.25,\"pickupId\":{{fixtureDropOffId}},\"dropOffId\":{{fixturePickupId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"https://example.com/updated.png\"],\"isAvailable\":true}",
           "options": {
             "raw": {
               "language": "json"
@@ -5695,7 +5719,7 @@
       ]
     },
     {
-      "name": "138 Read persisted car updates",
+      "name": "139 Read persisted car updates",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5728,7 +5752,7 @@
       ]
     },
     {
-      "name": "139 Empty update preserves car",
+      "name": "140 Empty update preserves car",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5773,7 +5797,7 @@
       ]
     },
     {
-      "name": "140 Accept maximum car price",
+      "name": "141 Accept maximum car price",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5817,7 +5841,7 @@
       ]
     },
     {
-      "name": "141 Accept trailing decimal zeros",
+      "name": "142 Accept trailing decimal zeros",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5861,7 +5885,7 @@
       ]
     },
     {
-      "name": "142 Clear pictures and disable availability",
+      "name": "143 Clear pictures and disable availability",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5905,7 +5929,7 @@
       ]
     },
     {
-      "name": "143 Read cleared pictures and disabled availability",
+      "name": "144 Read cleared pictures and disabled availability",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -5932,7 +5956,251 @@
       ]
     },
     {
-      "name": "144 Reject booking the disabled management car",
+      "name": "145 Calculate consumption cost as owner",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/consumption-cost",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('Consumption cost response is complete', () => {",
+              "  pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));",
+              "  pm.expect(data.category).to.eql('ICE');",
+              "  pm.expect(data.consumptionCostPerKm).to.be.a('number');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "146 Calculate TCO as owner",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/tco?kmPerYear=12000",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('TCO response is complete', () => {",
+              "  pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));",
+              "  pm.expect(data.category).to.eql('ICE');",
+              "  pm.expect(data.kmPerYear).to.eql(12000);",
+              "  pm.expect(data.tco).to.be.a('number');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "147 Reject invalid TCO query missing",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/tco",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "148 Reject invalid TCO query ?kmPerYear=abc",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/tco?kmPerYear=abc",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "149 Reject invalid TCO query ?kmPerYear=0",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/tco?kmPerYear=0",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "150 Reject invalid TCO query ?kmPerYear=-5",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/tco?kmPerYear=-5",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "151 Reject consumption cost without token",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/consumption-cost",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "152 Reject TCO for renter",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/tco?kmPerYear=12000",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "153 Reject booking the disabled management car",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars/{{managedCarId}}/rental",
@@ -5976,7 +6244,7 @@
       ]
     },
     {
-      "name": "145 Reject deleting car with rental history",
+      "name": "154 Reject deleting car with rental history",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{carId}}",
@@ -6006,7 +6274,7 @@
       ]
     },
     {
-      "name": "146 Delete dedicated car managedCarId",
+      "name": "155 Delete dedicated car managedCarId",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -6036,7 +6304,7 @@
       ]
     },
     {
-      "name": "147 Deleted car managedCarId is absent",
+      "name": "156 Deleted car managedCarId is absent",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{managedCarId}}",
@@ -6059,7 +6327,7 @@
       ]
     },
     {
-      "name": "148 Delete dedicated car secondManagedCarId",
+      "name": "157 Delete dedicated car secondManagedCarId",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{secondManagedCarId}}",
@@ -6089,7 +6357,7 @@
       ]
     },
     {
-      "name": "149 Deleted car secondManagedCarId is absent",
+      "name": "158 Deleted car secondManagedCarId is absent",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{secondManagedCarId}}",
@@ -6112,7 +6380,7 @@
       ]
     },
     {
-      "name": "150 Login unrelated owner (optional)",
+      "name": "159 Login unrelated owner (optional)",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/login",
@@ -6165,7 +6433,7 @@
       ]
     },
     {
-      "name": "151 Reject unrelated owner deciding rental (optional)",
+      "name": "160 Reject unrelated owner deciding rental (optional)",
       "request": {
         "method": "PATCH",
         "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
@@ -6221,7 +6489,7 @@
       ]
     },
     {
-      "name": "152 Reject unrelated owner reading rental (optional)",
+      "name": "161 Reject unrelated owner reading rental (optional)",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/rentals/{{rentalId}}",
@@ -6263,7 +6531,7 @@
       ]
     },
     {
-      "name": "153 Reject unrelated owner updating car (optional)",
+      "name": "162 Reject unrelated owner updating car (optional)",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{carId}}",
@@ -6319,7 +6587,7 @@
       ]
     },
     {
-      "name": "154 Reject unrelated owner deleting car (optional)",
+      "name": "163 Reject unrelated owner deleting car (optional)",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{carId}}",
@@ -6361,7 +6629,7 @@
       ]
     },
     {
-      "name": "155 Create validation fixture car",
+      "name": "164 Create validation fixture car",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6383,7 +6651,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-validation\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-validation\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6408,7 +6676,7 @@
       ]
     },
     {
-      "name": "156 Reject car create with oversized brand",
+      "name": "165 Reject car create with oversized brand",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6430,7 +6698,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6452,7 +6720,7 @@
       ]
     },
     {
-      "name": "157 Reject car update with oversized brand",
+      "name": "166 Reject car update with oversized brand",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6496,7 +6764,7 @@
       ]
     },
     {
-      "name": "158 Reject car create with oversized type",
+      "name": "167 Reject car create with oversized type",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6518,7 +6786,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6540,7 +6808,7 @@
       ]
     },
     {
-      "name": "159 Reject car update with oversized type",
+      "name": "168 Reject car update with oversized type",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6584,7 +6852,7 @@
       ]
     },
     {
-      "name": "160 Reject car create with oversized plate",
+      "name": "169 Reject car create with oversized plate",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6606,7 +6874,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6628,7 +6896,7 @@
       ]
     },
     {
-      "name": "161 Reject car update with oversized plate",
+      "name": "170 Reject car update with oversized plate",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6672,7 +6940,7 @@
       ]
     },
     {
-      "name": "162 Reject car create with plate exceeding limit after uppercasing",
+      "name": "171 Reject car create with plate exceeding limit after uppercasing",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6694,7 +6962,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"ßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßß\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"ßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßß\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6716,7 +6984,7 @@
       ]
     },
     {
-      "name": "163 Reject car update with plate exceeding limit after uppercasing",
+      "name": "172 Reject car update with plate exceeding limit after uppercasing",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6760,7 +7028,7 @@
       ]
     },
     {
-      "name": "164 Reject car create with invalid plate syntax",
+      "name": "173 Reject car create with invalid plate syntax",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6782,7 +7050,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"AB/<script>\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"AB/<script>\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6804,7 +7072,7 @@
       ]
     },
     {
-      "name": "165 Reject car update with invalid plate syntax",
+      "name": "174 Reject car update with invalid plate syntax",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6848,7 +7116,7 @@
       ]
     },
     {
-      "name": "166 Reject car create with control character in brand",
+      "name": "175 Reject car create with control character in brand",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6870,7 +7138,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Ford\\u0000Test\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Ford\\u0000Test\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6892,7 +7160,7 @@
       ]
     },
     {
-      "name": "167 Reject car update with control character in brand",
+      "name": "176 Reject car update with control character in brand",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6936,7 +7204,7 @@
       ]
     },
     {
-      "name": "168 Reject car create with zero pickup ID",
+      "name": "177 Reject car create with zero pickup ID",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6958,7 +7226,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":0,\"dropOffId\":{{fixtureDropOffId}}}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":0,\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -6980,7 +7248,7 @@
       ]
     },
     {
-      "name": "169 Reject car update with zero pickup ID",
+      "name": "178 Reject car update with zero pickup ID",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7024,7 +7292,7 @@
       ]
     },
     {
-      "name": "170 Reject car create with negative drop-off ID",
+      "name": "179 Reject car create with negative drop-off ID",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7046,7 +7314,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":-1}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":-1,\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6}",
           "options": {
             "raw": {
               "language": "json"
@@ -7068,7 +7336,7 @@
       ]
     },
     {
-      "name": "171 Reject car update with negative drop-off ID",
+      "name": "180 Reject car update with negative drop-off ID",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7112,7 +7380,7 @@
       ]
     },
     {
-      "name": "172 Reject car create with too many pictures",
+      "name": "181 Reject car create with too many pictures",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7134,7 +7402,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\",\"https://example.com/car.png\"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7156,7 +7424,7 @@
       ]
     },
     {
-      "name": "173 Reject car update with too many pictures",
+      "name": "182 Reject car update with too many pictures",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7200,7 +7468,7 @@
       ]
     },
     {
-      "name": "174 Reject car create with oversized picture URL",
+      "name": "183 Reject car create with oversized picture URL",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7222,7 +7490,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\"https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7244,7 +7512,7 @@
       ]
     },
     {
-      "name": "175 Reject car update with oversized picture URL",
+      "name": "184 Reject car update with oversized picture URL",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7288,7 +7556,7 @@
       ]
     },
     {
-      "name": "176 Reject car create with blank picture URL",
+      "name": "185 Reject car create with blank picture URL",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7310,7 +7578,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\" \"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\" \"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7332,7 +7600,7 @@
       ]
     },
     {
-      "name": "177 Reject car update with blank picture URL",
+      "name": "186 Reject car update with blank picture URL",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7376,7 +7644,7 @@
       ]
     },
     {
-      "name": "178 Reject car create with relative picture URL",
+      "name": "187 Reject car create with relative picture URL",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7398,7 +7666,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\"relative.png\"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"relative.png\"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7420,7 +7688,7 @@
       ]
     },
     {
-      "name": "179 Reject car update with relative picture URL",
+      "name": "188 Reject car update with relative picture URL",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7464,7 +7732,7 @@
       ]
     },
     {
-      "name": "180 Reject car create with unsupported picture scheme",
+      "name": "189 Reject car create with unsupported picture scheme",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7486,7 +7754,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\"javascript:alert(1)\"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"javascript:alert(1)\"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7508,7 +7776,7 @@
       ]
     },
     {
-      "name": "181 Reject car update with unsupported picture scheme",
+      "name": "190 Reject car update with unsupported picture scheme",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7552,7 +7820,7 @@
       ]
     },
     {
-      "name": "182 Reject car create with picture URL without host",
+      "name": "191 Reject car create with picture URL without host",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7574,7 +7842,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\"https:///car.png\"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"https:///car.png\"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7596,7 +7864,7 @@
       ]
     },
     {
-      "name": "183 Reject car update with picture URL without host",
+      "name": "192 Reject car update with picture URL without host",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7640,7 +7908,7 @@
       ]
     },
     {
-      "name": "184 Reject car create with picture URL with credentials",
+      "name": "193 Reject car create with picture URL with credentials",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7662,7 +7930,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\"https://user:password@example.com/car.png\"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"https://user:password@example.com/car.png\"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7684,7 +7952,7 @@
       ]
     },
     {
-      "name": "185 Reject car update with picture URL with credentials",
+      "name": "194 Reject car update with picture URL with credentials",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7728,7 +7996,7 @@
       ]
     },
     {
-      "name": "186 Reject car create with picture URL with invalid port",
+      "name": "195 Reject car create with picture URL with invalid port",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7750,7 +8018,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"pictures\":[\"https://example.com:70000/car.png\"]}",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}},\"category\":\"ICE\",\"fuelType\":\"GASOLINE\",\"consumptionPer100Km\":6,\"pictures\":[\"https://example.com:70000/car.png\"]}",
           "options": {
             "raw": {
               "language": "json"
@@ -7772,7 +8040,7 @@
       ]
     },
     {
-      "name": "187 Reject car update with picture URL with invalid port",
+      "name": "196 Reject car update with picture URL with invalid port",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7816,7 +8084,7 @@
       ]
     },
     {
-      "name": "188 Validation failures leave car unchanged",
+      "name": "197 Validation failures leave car unchanged",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7840,7 +8108,7 @@
       ]
     },
     {
-      "name": "189 Accept maximum text and picture limits",
+      "name": "198 Accept maximum text and picture limits",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7884,7 +8152,7 @@
       ]
     },
     {
-      "name": "190 Boundary values survive database round trip",
+      "name": "199 Boundary values survive database round trip",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7913,7 +8181,7 @@
       ]
     },
     {
-      "name": "191 Delete validation fixture car",
+      "name": "200 Delete validation fixture car",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7943,7 +8211,7 @@
       ]
     },
     {
-      "name": "192 Deleted validation fixture is absent",
+      "name": "201 Deleted validation fixture is absent",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7966,7 +8234,7 @@
       ]
     },
     {
-      "name": "193 Reject registration with phone containing letters",
+      "name": "202 Reject registration with phone containing letters",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8003,7 +8271,7 @@
       ]
     },
     {
-      "name": "194 Reject registration with short phone",
+      "name": "203 Reject registration with short phone",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8040,7 +8308,7 @@
       ]
     },
     {
-      "name": "195 Reject registration with long phone",
+      "name": "204 Reject registration with long phone",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8077,7 +8345,7 @@
       ]
     },
     {
-      "name": "196 Reject registration with multiple phone plus signs",
+      "name": "205 Reject registration with multiple phone plus signs",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8114,7 +8382,7 @@
       ]
     },
     {
-      "name": "197 Reject registration with unbalanced phone parentheses",
+      "name": "206 Reject registration with unbalanced phone parentheses",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8151,7 +8419,7 @@
       ]
     },
     {
-      "name": "198 Reject registration with contact control character",
+      "name": "207 Reject registration with contact control character",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8188,7 +8456,7 @@
       ]
     },
     {
-      "name": "199 Register formatted international phone",
+      "name": "208 Register formatted international phone",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",

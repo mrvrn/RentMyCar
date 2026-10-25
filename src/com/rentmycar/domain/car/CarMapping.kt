@@ -12,5 +12,8 @@ fun Car.toDto(): CarDto = CarDto(
     pickupId = pickup.id.value,
     dropOffId = dropOff.id.value,
     pictures = pictures,
-    isAvailable = isAvailable
+    isAvailable = isAvailable,
+    category = CarCategory.fromDatabase(category),
+    fuelType = fuelType,
+    consumptionPer100Km = consumptionPer100Km
 )

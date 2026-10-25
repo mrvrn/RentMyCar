@@ -2,6 +2,7 @@ package com.rentmycar.domain.car.dto
 
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
+import com.rentmycar.domain.car.CarCategory
 
 @Serializable
 data class CreateCarDto(
@@ -12,5 +13,8 @@ data class CreateCarDto(
     val pickupId: Long,
     val dropOffId: Long,
     val pictures: List<String>? = null,
-    val isAvailable: Boolean = false
+    val isAvailable: Boolean = false,
+    val category: CarCategory = CarCategory.ICE,
+    val fuelType: String? = null,
+    @Serializable(with = BigDecimalSerializer::class) val consumptionPer100Km: BigDecimal? = null
 )

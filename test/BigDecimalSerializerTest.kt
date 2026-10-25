@@ -16,7 +16,7 @@ class BigDecimalSerializerTest {
     private fun car(price: String) = CarDto(1, 1, "Audi", "A3", "AB-12-CD", price.toBigDecimal(), 1, 1, null, true)
 
     @Test
-    fun encodesExactUnquotedDecimals() {
+    fun `encodes exact unquoted decimals`() {
         for (price in listOf("0.10", "8.55", "12345678.90", "100")) {
             val primitive = Json.parseToJsonElement(Json.encodeToString(car(price))).jsonObject["pricePerHour"]!!.jsonPrimitive
             assertFalse(primitive.isString)
@@ -25,7 +25,7 @@ class BigDecimalSerializerTest {
     }
 
     @Test
-    fun decodesExactDecimalsAndRoundTrips() {
+    fun `decodes exact decimals and round trips`() {
         assertEquals("0.10".toBigDecimal(), Json.decodeFromString<UpdateCarDto>("""{"pricePerHour":0.10}""").pricePerHour)
         assertEquals("19.99".toBigDecimal(), Json.decodeFromString<UpdateCarDto>("""{"pricePerHour":19.99}""").pricePerHour)
         assertNull(Json.decodeFromString<UpdateCarDto>("""{"pricePerHour":null}""").pricePerHour)
@@ -34,7 +34,7 @@ class BigDecimalSerializerTest {
     }
 
     @Test
-    fun rejectsNonNumericValues() {
+    fun `rejects non numeric values`() {
         for (value in listOf("\"abc\"", "\"8.55\"", "true", "{}", "[]")) {
             assertFailsWith<SerializationException>(value) {
                 Json.decodeFromString<UpdateCarDto>("""{"pricePerHour":$value}""")

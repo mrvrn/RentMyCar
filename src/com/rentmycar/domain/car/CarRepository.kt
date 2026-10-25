@@ -38,7 +38,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
             return withTransaction {
                 val normalizedPlate = car.licensePlate.trim().uppercase(Locale.ROOT)
                 if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
-                    throw DuplicateLicensePlateException(IllegalStateException("License plate is already in use"))
+                    throw DuplicateLicensePlateException(IllegalStateException("This license plate is already in use"))
                 }
 
                 val ownerUser = User.findById(ownerId)
@@ -58,6 +58,9 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                     dropOff = dropOffLocation
                     pictures = car.pictures
                     isAvailable = car.isAvailable
+                    category = car.category.name
+                    fuelType = car.fuelType
+                    consumptionPer100Km = car.consumptionPer100Km
                 })
             }
         } catch (exception: SQLException) {
@@ -84,7 +87,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                     val normalizedPlate = newPlate.trim().uppercase(Locale.ROOT)
                     if (normalizedPlate != existing.licensePlate) {
                         if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
-                            throw DuplicateLicensePlateException(IllegalStateException("License plate is already in use"))
+                            throw DuplicateLicensePlateException(IllegalStateException("This license plate is already in use"))
                         }
                         existing.licensePlate = normalizedPlate
                     }
@@ -98,6 +101,9 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                     ?: throw IllegalArgumentException("Drop-off location with ID $it does not exist") }
                 car.pictures?.let { existing.pictures = it }
                 car.isAvailable?.let { existing.isAvailable = it }
+                car.category?.let { existing.category = it.name }
+                if (car.fuelType != null) existing.fuelType = car.fuelType
+                if (car.consumptionPer100Km != null) existing.consumptionPer100Km = car.consumptionPer100Km
                 toDto(existing)
             }
         } catch (exception: SQLException) {

@@ -35,16 +35,25 @@ data class DatabaseSettings(val url: String, val user: String, val password: Str
 
 fun Application.configureDatabase() {
     val settings = DatabaseSettings.from(environment.config)
-    migrateDatabase(settings)
+    val locations = if (appEnvironment["DEMO_SEED"] == "true") {
+        arrayOf("classpath:db/migration", "classpath:db/seed")
+    } else {
+        arrayOf("classpath:db/migration")
+    }
+    migrateDatabase(settings, *locations)
     settings.connect()
 }
 
 fun migrateDatabase(
     settings: DatabaseSettings,
-    location: String = "classpath:db/migration",
+): org.flywaydb.core.api.output.MigrateResult = migrateDatabase(settings, "classpath:db/migration")
+
+fun migrateDatabase(
+    settings: DatabaseSettings,
+    vararg locations: String,
 ): org.flywaydb.core.api.output.MigrateResult = Flyway.configure()
         .dataSource(settings.url, settings.user, settings.password)
-        .locations(location)
+        .locations(*locations)
         .validateMigrationNaming(true)
         .load()
         .migrate()

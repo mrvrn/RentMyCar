@@ -21,11 +21,15 @@ internal suspend fun ApplicationCall.userOrRespond(userRepository: IUserReposito
     return user
 }
 
-internal suspend fun ApplicationCall.carOrRespond(carRepository: ICarRepository): CarDto? {
-    val id = resourceIdOrRespond("car") ?: return null
+internal suspend fun ApplicationCall.carOrRespond(
+    carRepository: ICarRepository,
+    jsonErrors: Boolean = false
+): CarDto? {
+    val id = resourceIdOrRespond("car", jsonErrors) ?: return null
     val car = carRepository.findById(id)
     if (car == null) {
-        respond(HttpStatusCode.NotFound, "Car not found")
+        if (jsonErrors) respond(HttpStatusCode.NotFound, mapOf("error" to "Car not found"))
+        else respond(HttpStatusCode.NotFound, "Car not found")
     }
     return car
 }
@@ -57,10 +61,11 @@ internal suspend fun ApplicationCall.rentalOrRespond(
     return rental
 }
 
-private suspend fun ApplicationCall.resourceIdOrRespond(resource: String): Long? {
+private suspend fun ApplicationCall.resourceIdOrRespond(resource: String, jsonErrors: Boolean = false): Long? {
     val id = parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
     if (id == null) {
-        respond(HttpStatusCode.BadRequest, "Invalid $resource ID")
+        if (jsonErrors) respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid $resource ID"))
+        else respond(HttpStatusCode.BadRequest, "Invalid $resource ID")
     }
     return id
 }

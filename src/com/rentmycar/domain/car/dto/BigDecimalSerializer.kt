@@ -20,15 +20,15 @@ object BigDecimalSerializer : KSerializer<BigDecimal> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("java.math.BigDecimal", PrimitiveKind.DOUBLE)
 
     override fun serialize(encoder: Encoder, value: BigDecimal) {
-        val json = encoder as? JsonEncoder ?: throw SerializationException("BigDecimal only supports JSON")
+        val json = encoder as? JsonEncoder ?: throw SerializationException("BigDecimal is only supported as JSON")
         json.encodeJsonElement(JsonUnquotedLiteral(value.toPlainString()))
     }
 
     override fun deserialize(decoder: Decoder): BigDecimal {
-        val json = decoder as? JsonDecoder ?: throw SerializationException("BigDecimal only supports JSON")
+        val json = decoder as? JsonDecoder ?: throw SerializationException("BigDecimal is only supported as JSON")
         val element = json.decodeJsonElement()
         if (element !is JsonPrimitive || element.isString) {
-            throw SerializationException("Expected a number, received: $element")
+            throw SerializationException("Expected a number, got: $element")
         }
         return element.content.toBigDecimalOrNull() ?: throw SerializationException("Invalid number: ${element.content}")
     }
