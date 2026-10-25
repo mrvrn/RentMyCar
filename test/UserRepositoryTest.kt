@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 
 class UserRepositoryTest {
     @Test
-    fun duplicateEmailDoesNotCreateAnotherUser() = runBlocking {
+    fun `duplicate email does not create another user`() = runBlocking {
         MySQLContainer("mysql:8.1").use { mysql ->
             mysql.start()
             val settings = DatabaseSettings(mysql.jdbcUrl, mysql.username, mysql.password)
@@ -40,7 +40,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun createPersistsUserWithHashedPassword() = runBlocking {
+    fun `create persists user with hashed password`() = runBlocking {
         MySQLContainer("mysql:8.1").use { mysql ->
             mysql.start()
             val settings = DatabaseSettings(mysql.jdbcUrl, mysql.username, mysql.password)

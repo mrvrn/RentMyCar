@@ -30,7 +30,7 @@ class RegistrationTest {
     )
 
     @Test
-    fun acceptsRegistrationWithoutJwtAndTrimsContactFields() {
+    fun `accepts registration without jwt and trims contact fields`() {
         val input = validUser.copy(
             name = " Test User ", email = " test@example.com ",
             phone = " 0612345678 ", address = " Test Street 1 ",
@@ -44,36 +44,36 @@ class RegistrationTest {
     }
 
     @Test
-    fun rejectsMissingFields() = checkRegistration(body = "{}")
+    fun `rejects missing fields`() = checkRegistration(body = "{}")
 
     @Test
-    fun rejectsMalformedJson() = checkRegistration(body = "{")
+    fun `rejects malformed json`() = checkRegistration(body = "{")
 
     @Test
-    fun rejectsBlankContactField() = checkRegistration(input = validUser.copy(name = "   "))
+    fun `rejects blank contact field`() = checkRegistration(input = validUser.copy(name = "   "))
 
     @Test
-    fun rejectsOversizedContactField() = checkRegistration(input = validUser.copy(address = "a".repeat(101)))
+    fun `rejects oversized contact field`() = checkRegistration(input = validUser.copy(address = "a".repeat(101)))
 
     @Test
-    fun rejectsInvalidEmail() = checkRegistration(input = validUser.copy(email = "not-an-email"))
+    fun `rejects invalid email`() = checkRegistration(input = validUser.copy(email = "not-an-email"))
 
     @Test
-    fun rejectsShortPassword() = checkRegistration(input = validUser.copy(password = "short"))
+    fun `rejects short password`() = checkRegistration(input = validUser.copy(password = "short"))
 
     @Test
-    fun rejectsPasswordOverBcryptByteLimit() = checkRegistration(
+    fun `rejects password over bcrypt byte limit`() = checkRegistration(
         input = validUser.copy(password = "é".repeat(37))
     )
 
     @Test
-    fun acceptsPasswordAtBcryptByteLimit() {
+    fun `accepts password at bcrypt byte limit`() {
         val input = validUser.copy(password = "é".repeat(36))
         checkRegistration(input = input, status = HttpStatusCode.Created, saved = input)
     }
 
     @Test
-    fun duplicateEmailReturnsConflict() = checkRegistration(
+    fun `duplicate email returns conflict`() = checkRegistration(
         status = HttpStatusCode.Conflict,
         duplicate = true,
         saved = validUser,

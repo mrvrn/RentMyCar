@@ -106,7 +106,7 @@ class JwtAuthTest {
     // --- /login ---
 
     @Test
-    fun loginWithValidCredentialsReturnsSignedToken() = jwtTest {
+    fun `login with valid credentials returns signed token`() = jwtTest {
         val response = client.login(EMAIL, PASSWORD)
         assertEquals(HttpStatusCode.OK, response.status)
 
@@ -124,22 +124,22 @@ class JwtAuthTest {
     }
 
     @Test
-    fun loginWithWrongPasswordIsRejected() = jwtTest {
+    fun `login with wrong password is rejected`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.login(EMAIL, "wrong-password").status)
     }
 
     @Test
-    fun loginTrimsEmailWhitespace() = jwtTest {
+    fun `login trims email whitespace`() = jwtTest {
         assertEquals(HttpStatusCode.OK, client.login("  $EMAIL  ", PASSWORD).status)
     }
 
     @Test
-    fun loginDoesNotTrimPasswordWhitespace() = jwtTest {
+    fun `login does not trim password whitespace`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.login(EMAIL, " $PASSWORD ").status)
     }
 
     @Test
-    fun logoutExplicitlyReportsUnsupportedTokenRevocation() = jwtTest {
+    fun `logout explicitly reports unsupported token revocation`() = jwtTest {
         val response = client.post("/logout")
         assertEquals(HttpStatusCode.NotImplemented, response.status)
         assertEquals(
@@ -149,12 +149,12 @@ class JwtAuthTest {
     }
 
     @Test
-    fun loginWithUnknownEmailIsRejected() = jwtTest {
+    fun `login with unknown email is rejected`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.login("nobody@example.com", PASSWORD).status)
     }
 
     @Test
-    fun loginTokenGivesAccessToProtectedRoute() = jwtTest {
+    fun `login token gives access to protected route`() = jwtTest {
         val body = client.login(EMAIL, PASSWORD).bodyAsText()
         val token = Json.parseToJsonElement(body).jsonObject["token"]!!.jsonPrimitive.content
 
@@ -166,12 +166,12 @@ class JwtAuthTest {
     // --- protected routes ---
 
     @Test
-    fun validTokenIsAccepted() = jwtTest {
+    fun `valid token is accepted`() = jwtTest {
         assertEquals(HttpStatusCode.OK, client.getUser(token()).status)
     }
 
     @Test
-    fun validTokenCannotAccessAnotherUser() = jwtTest {
+    fun `valid token cannot access another user`() = jwtTest {
         val otherEmail = "other-jwt@example.com"
         repository.create(
             CreateUserDto("Other User", otherEmail, "0612345678", "Other Street 2", PASSWORD)
@@ -187,45 +187,45 @@ class JwtAuthTest {
     }
 
     @Test
-    fun missingTokenIsRejectedWithChallengeMessage() = jwtTest {
+    fun `missing token is rejected with challenge message`() = jwtTest {
         val response = client.getUser()
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertTrue(response.bodyAsText().contains("Token is not valid or has expired"))
     }
 
     @Test
-    fun malformedTokenIsRejected() = jwtTest {
+    fun `malformed token is rejected`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.getUser("not-a-jwt").status)
     }
 
     @Test
-    fun tokenSignedWithOtherSecretIsRejected() = jwtTest {
+    fun `token signed with other secret is rejected`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.getUser(token(secret = "attacker-secret")).status)
     }
 
     @Test
-    fun expiredTokenIsRejected() = jwtTest {
+    fun `expired token is rejected`() = jwtTest {
         val expired = token(expiresAt = Date(System.currentTimeMillis() - 60_000))
         assertEquals(HttpStatusCode.Unauthorized, client.getUser(expired).status)
     }
 
     @Test
-    fun tokenWithWrongIssuerIsRejected() = jwtTest {
+    fun `token with wrong issuer is rejected`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.getUser(token(issuer = "http://evil/")).status)
     }
 
     @Test
-    fun tokenWithWrongAudienceIsRejected() = jwtTest {
+    fun `token with wrong audience is rejected`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.getUser(token(audience = "other-app")).status)
     }
 
     @Test
-    fun tokenWithoutUserIdClaimIsRejected() = jwtTest {
+    fun `token without user id claim is rejected`() = jwtTest {
         assertEquals(HttpStatusCode.Unauthorized, client.getUser(token(userId = null)).status)
     }
 
     @Test
-    fun wrongAuthenticationSchemeIsRejected() = jwtTest {
+    fun `wrong authentication scheme is rejected`() = jwtTest {
         val response = client.get("/users/$userId") {
             header(HttpHeaders.Authorization, "Basic dXNlcjpwYXNz")
         }
@@ -234,7 +234,7 @@ class JwtAuthTest {
     }
 
     @Test
-    fun nonNumericUserIdIsRejected() = jwtTest {
+    fun `non numeric user id is rejected`() = jwtTest {
         val invalidToken = JWT.create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)

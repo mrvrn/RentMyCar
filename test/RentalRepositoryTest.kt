@@ -98,7 +98,7 @@ class RentalRepositoryTest {
     private fun rentalTest(block: suspend Fixture.() -> Unit) = runBlocking { Fixture().block() }
 
     @Test
-    fun createsAndReadsRentalWithExactPriceAndDefaults() = rentalTest {
+    fun `creates and reads rental with exact price and defaults`() = rentalTest {
         val result = create()
         assertEquals(carId, result.carId)
         assertEquals(renterId, result.renterId)
@@ -114,7 +114,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun rentalDetailsIncludeOverviewAndMetadataForRenter() = rentalTest {
+    fun `rental details include overview and metadata for renter`() = rentalTest {
         val created = create()
         val overview = repository.findAllByUserId(renterId).single { it.id == created.id }
         val details = assertNotNull(repository.findDetailsById(created.id, renterId))
@@ -136,7 +136,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun rentalDetailsAllowRenterAndOwnerButRejectUnrelatedUsersForEveryStatus() = rentalTest {
+    fun `rental details allow renter and owner but reject unrelated users for every status`() = rentalTest {
         for (status in RentalStatus.entries) {
             val rental = seed(status)
             for (actor in listOf(ownerId, strangerId)) {
@@ -153,18 +153,18 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun missingRentalDetailsReturnNull() = rentalTest {
+    fun `missing rental details return null`() = rentalTest {
         assertNull(repository.findDetailsById(Long.MAX_VALUE, renterId))
     }
 
     @Test
-    fun rejectsMismatchingCarIdWithoutSaving() = rentalTest {
+    fun `rejects mismatching car id without saving`() = rentalTest {
         assertFailsWith<IllegalArgumentException> { create(input.copy(carId = Long.MAX_VALUE)) }
         assertTrue(rentals().isEmpty())
     }
 
     @Test
-    fun rejectsMalformedDatesWithoutSaving() = rentalTest {
+    fun `rejects malformed dates without saving`() = rentalTest {
         for (invalid in listOf(input.copy(startAt = "invalid"), input.copy(endAt = "invalid"))) {
             assertFailsWith<IllegalArgumentException> { create(invalid) }
         }
@@ -172,7 +172,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun rejectsPastStartAndEmptyOrReversedPeriodsWithoutSaving() = rentalTest {
+    fun `rejects past start and empty or reversed periods without saving`() = rentalTest {
         for (invalid in listOf(
             input.copy(startAt = "2000-01-01T10:00:00"),
             input.copy(endAt = input.startAt),
@@ -184,7 +184,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun reportsMissingCarAndRenterWithoutSaving() = rentalTest {
+    fun `reports missing car and renter without saving`() = rentalTest {
         assertFailsWith<RentalNotFoundException> {
             repository.create(input.copy(carId = Long.MAX_VALUE), renterId, Long.MAX_VALUE)
         }
@@ -193,21 +193,21 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun rejectsUnavailableCarWithoutSaving() = rentalTest {
+    fun `rejects unavailable car without saving`() = rentalTest {
         transaction(database) { Car[carId].isAvailable = false }
         assertFailsWith<RentalUnavailableException> { create() }
         assertTrue(rentals().isEmpty())
     }
 
     @Test
-    fun rejectsPriceAboveDatabaseMaximumWithoutSaving() = rentalTest {
+    fun `rejects price above database maximum without saving`() = rentalTest {
         transaction(database) { Car[carId].pricePerHour = BigDecimal("99999999.99") }
         assertFailsWith<IllegalArgumentException> { create() }
         assertTrue(rentals().isEmpty())
     }
 
     @Test
-    fun acceptsPriceAtDatabaseMaximum() = rentalTest {
+    fun `accepts price at database maximum`() = rentalTest {
         transaction(database) { Car[carId].pricePerHour = BigDecimal("99999999.99") }
         val result = create(input.copy(endAt = "2100-11-01T11:00:00"))
         assertEquals("99999999.99", result.totalPrice)
@@ -215,7 +215,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun pendingConfirmedAndActiveRentalsBlockEveryKindOfOverlap() = rentalTest {
+    fun `pending confirmed and active rentals block every kind of overlap`() = rentalTest {
         val periods = listOf(
             input,
             input.copy(startAt = "2100-11-01T09:00:00", endAt = "2100-11-01T10:30:00"),
@@ -234,14 +234,14 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun rejectedCompletedAndCancelledRentalsDoNotBlockBooking() = rentalTest {
+    fun `rejected completed and cancelled rentals do not block booking`() = rentalTest {
         for (status in listOf(RentalStatus.REJECTED, RentalStatus.COMPLETED, RentalStatus.CANCELLED)) seed(status)
         assertEquals(RentalStatus.PENDING, create().status)
         assertEquals(4, rentals().size)
     }
 
     @Test
-    fun adjacentAndSeparatePeriodsAreAllowed() = rentalTest {
+    fun `adjacent and separate periods are allowed`() = rentalTest {
         create()
         create(input.copy(startAt = "2100-11-01T09:00:00", endAt = input.startAt))
         create(input.copy(startAt = input.endAt, endAt = "2100-11-01T12:00:00"))
@@ -250,14 +250,14 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun bookingsForAnotherCarDoNotBlockSamePeriod() = rentalTest {
+    fun `bookings for another car do not block same period`() = rentalTest {
         create()
         val other = Fixture()
         assertEquals(RentalStatus.PENDING, other.create().status)
     }
 
     @Test
-    fun checksEverySourceAndTargetStatusAndPersistsOnlyAllowedTransitions() = rentalTest {
+    fun `checks every source and target status and persists only allowed transitions`() = rentalTest {
         for (source in RentalStatus.entries) {
             for (target in RentalStatus.entries) {
                 val seeded = seed(source)
@@ -297,7 +297,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun renterAndStrangerCannotApproveOrRejectAnyRental() = rentalTest {
+    fun `renter and stranger cannot approve or reject any rental`() = rentalTest {
         for (source in RentalStatus.entries) {
             val before = seed(source)
             for (actor in listOf(renterId, strangerId)) {
@@ -310,7 +310,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun ownerAndStrangerCannotCancelAnyRental() = rentalTest {
+    fun `owner and stranger cannot cancel any rental`() = rentalTest {
         for (source in RentalStatus.entries) {
             val before = seed(source)
             for (actor in listOf(ownerId, strangerId)) {
@@ -323,14 +323,14 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun statusChangesReportMissingRental() = rentalTest {
+    fun `status changes report missing rental`() = rentalTest {
         for (status in RentalStatus.entries) {
             assertFailsWith<RentalNotFoundException> { repository.changeStatus(Long.MAX_VALUE, status, ownerId) }
         }
     }
 
     @Test
-    fun cancellationFreesPeriodForNewBookingAndCannotBeApprovedAgain() = rentalTest {
+    fun `cancellation frees period for new booking and cannot be approved again`() = rentalTest {
         val existing = create()
         repository.changeStatus(existing.id, RentalStatus.CONFIRMED, ownerId)
         repository.changeStatus(existing.id, RentalStatus.CANCELLED, renterId)
@@ -341,7 +341,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun cancellationRecordsCurrentTimeAndRepeatedRequestsPreserveIt() = rentalTest {
+    fun `cancellation records current time and repeated requests preserve it`() = rentalTest {
         val existing = create()
         val zone = TimeZone.of("Europe/Amsterdam")
         // Allow for database timestamp precision when comparing the recorded time.
@@ -356,7 +356,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun concurrentBookingsCannotReserveSameCarAndPeriodTwice() = rentalTest {
+    fun `concurrent bookings cannot reserve same car and period twice`() = rentalTest {
         val fixture = this
         val gate = CompletableDeferred<Unit>()
         val outcomes = coroutineScope {
@@ -372,7 +372,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun concurrentOwnerDecisionsCannotOverwriteEachOther() = rentalTest {
+    fun `concurrent owner decisions cannot overwrite each other`() = rentalTest {
         val existing = create()
         val gate = CompletableDeferred<Unit>()
         val outcomes = coroutineScope {
@@ -391,7 +391,7 @@ class RentalRepositoryTest {
     }
 
     @Test
-    fun concurrentApprovalCannotUndoRenterCancellation() = rentalTest {
+    fun `concurrent approval cannot undo renter cancellation`() = rentalTest {
         val existing = create()
         val gate = CompletableDeferred<Unit>()
         val outcomes = coroutineScope {

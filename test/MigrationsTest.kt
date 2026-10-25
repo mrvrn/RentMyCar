@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 
 class MigrationsTest {
     @Test
-    fun priceMigrationUpgradesExistingCarsAndStoresExactDecimals() = withDatabase { settings ->
+    fun `price migration upgrades existing cars and stores exact decimals`() = withDatabase { settings ->
         Flyway.configure()
             .dataSource(settings.url, settings.user, settings.password)
             .locations("classpath:db/migration")
@@ -75,7 +75,7 @@ class MigrationsTest {
     }
 
     @Test
-    fun committedMigrationsApplyOnceAndCreateForeignKeys() = withDatabase { settings ->
+    fun `committed migrations apply once and create foreign keys`() = withDatabase { settings ->
         val count = kotlin.io.path.Path("resources", "db", "migration")
             .listDirectoryEntries("V*__*.sql").size
         assertTrue(count > 0)
@@ -99,7 +99,7 @@ class MigrationsTest {
     }
 
     @Test
-    fun generationDoesNotApplySqlAndSubsequentChangesPreserveData() = withDatabase { settings ->
+    fun `generation does not apply sql and subsequent changes preserve data`() = withDatabase { settings ->
         val directory = createTempDirectory("rentmycar-migrations-")
         try {
             val database = settings.connect()

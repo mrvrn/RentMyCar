@@ -9,7 +9,7 @@ import kotlin.test.assertNull
 
 class DatabaseConfigurationTest {
     @Test
-    fun migrationConfigurationOnlyRequiresDatabaseSettings() {
+    fun `migration configuration only requires database settings`() {
         val variables = loadEnvironment()
         val previousSecret = System.getProperty("JWT_SECRET")
         System.clearProperty("JWT_SECRET")
@@ -29,7 +29,7 @@ class DatabaseConfigurationTest {
     }
 
     @Test
-    fun yamlResolvesLoadedCredentials() {
+    fun `yaml resolves loaded credentials`() {
         // Load .env values and expose them as JVM system properties for YAML resolution.
         val variables = loadEnvironment()
 
