@@ -65,7 +65,9 @@ class AuthorizationTest {
         var ownerId: Long = 0
         var renterId: Long = 0
 
-        val initDb: Boolean by lazy {
+        val initDb: Boolean = initializeDatabase()
+
+        private fun initializeDatabase(): Boolean {
             val mysql = MySQLContainer("mysql:8.1").apply { start() }
             val settings = DatabaseSettings(mysql.jdbcUrl, mysql.username, mysql.password)
             migrateDatabase(settings)
@@ -88,7 +90,7 @@ class AuthorizationTest {
                 ownerId = repository.findAll().single { it.email == "owner@example.com" }.id
                 renterId = repository.findAll().single { it.email == "renter@example.com" }.id
             }
-            true
+            return true
         }
     }
 
