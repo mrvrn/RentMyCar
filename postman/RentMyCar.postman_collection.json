@@ -317,7 +317,7 @@
             "type": "text/javascript",
             "exec": [
               "const start = new Date(Date.now() + 7 * 86400000);",
-              "start.setUTCMilliseconds(0);",
+              "start.setUTCHours(10, 0, 0, 0);",
               "pm.collectionVariables.set('startAt', start.toISOString().slice(0, 19));",
               "pm.collectionVariables.set('endAt', new Date(start.getTime() + 7200000).toISOString().slice(0, 19));",
               "pm.collectionVariables.unset('rentalId');"

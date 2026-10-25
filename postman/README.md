@@ -5,7 +5,7 @@
 3. Set the collection variables `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`. The owner credentials must belong to the owner of the selected car. Choose an existing available car with no booking during the test period. The API has no car creation endpoint; add a car and its related records to your development database if necessary.
 4. Run the collection in order, with one iteration, using Collection Runner.
 
-Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses `POST /cars/{{carId}}/rental` with that token and generates a two-hour period seven days ahead. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`. All creation and rebooking requests use this car route.
+Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses `POST /cars/{{carId}}/rental` with that token and generates a 10:00–12:00 Amsterdam local-time period on the UTC calendar date seven days ahead, avoiding daylight-saving transition hours. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`. All creation and rebooking requests use this car route.
 
 Valid registration requests receive the same `200 OK` acknowledgement for new and existing email addresses. Request 08 checks this generic duplicate-registration response; it does not indicate whether an account was created. Existing accounts are not modified.
 

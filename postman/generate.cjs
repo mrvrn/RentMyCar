@@ -79,7 +79,7 @@ pm.collectionVariables.unset('cancelledAt');` }),
   pm.collectionVariables.set('pricePerHourCents', Math.round(data.pricePerHour * 100));
 }` }),
     request('04 Create rental through car route', createUrl, rental, 201, { auth: true, pre: `const start = new Date(Date.now() + 7 * 86400000);
-start.setUTCMilliseconds(0);
+start.setUTCHours(10, 0, 0, 0);
 pm.collectionVariables.set('startAt', start.toISOString().slice(0, 19));
 pm.collectionVariables.set('endAt', new Date(start.getTime() + 7200000).toISOString().slice(0, 19));
 pm.collectionVariables.unset('rentalId');`, tests: `if (pm.response.code === 201) {
