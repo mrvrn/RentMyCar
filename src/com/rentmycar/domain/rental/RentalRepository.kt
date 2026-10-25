@@ -11,6 +11,7 @@ import com.rentmycar.domain.rental.dto.RentalOverviewDto
 import com.rentmycar.domain.user.User
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.dao.with
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -18,6 +19,14 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
+
+private fun rentalAuditTime(): LocalDateTime {
+    // Audit timestamps use UTC at MySQL DATETIME(6) precision, regardless of the database session zone.
+    val now = kotlin.time.Clock.System.now()
+    return Instant.fromEpochSeconds(now.epochSeconds, now.nanosecondsOfSecond / 1_000 * 1_000)
+        .toLocalDateTime(TimeZone.UTC)
+}
 
 internal fun calculateRentalPrice(
     pricePerHour: BigDecimal,
@@ -45,7 +54,7 @@ class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Re
     }
 
     override suspend fun findAllByUserId(userId: Long): List<RentalOverviewDto> = withTransaction {
-        Rental.find { Rentals.renterId eq userId }.map { it.toOverviewDto() }
+        Rental.find { Rentals.renterId eq userId }.with(Rental::car).map { it.toOverviewDto() }
     }
 
     override suspend fun create(
@@ -56,6 +65,12 @@ class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Re
         require(rental.carId == carId) { "Car ID must match the car in the URL" }
         val start = LocalDateTime.parse(rental.startAt)
         val end = LocalDateTime.parse(rental.endAt)
+        require(start.year in 1000..9999 && end.year in 1000..9999) {
+            "Rental times must be between years 1000 and 9999"
+        }
+        require(start.nanosecond % 1_000 == 0 && end.nanosecond % 1_000 == 0) {
+            "Rental times must have at most microsecond precision"
+        }
         val now = kotlin.time.Clock.System.now()
         val zone = TimeZone.of("Europe/Amsterdam")
 
@@ -98,7 +113,7 @@ class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Re
                 status = RentalStatus.PENDING
                 totalPrice = price
                 cancelledAt = null
-                // createdAt uses the database default.
+                createdAt = rentalAuditTime()
             }.toDto()
         }
     }
@@ -120,7 +135,7 @@ class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Re
 
             if (rental.status != RentalStatus.CANCELLED) {
                 rental.status = RentalStatus.CANCELLED
-                rental.cancelledAt = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.of("Europe/Amsterdam"))
+                rental.cancelledAt = rentalAuditTime()
             }
             return@withTransaction rental.toDto()
         }

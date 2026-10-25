@@ -2,6 +2,7 @@ package test
 
 import com.rentmycar.database.DatabaseSettings
 import com.rentmycar.database.migrateDatabase
+import com.rentmycar.database.withTransaction
 import com.rentmycar.domain.car.Car
 import com.rentmycar.domain.location.Location
 import com.rentmycar.domain.rental.*
@@ -11,8 +12,12 @@ import com.rentmycar.domain.user.User
 import kotlinx.coroutines.*
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.core.SqlLogger
+import org.jetbrains.exposed.v1.core.Transaction
+import org.jetbrains.exposed.v1.core.statements.StatementContext
 import org.testcontainers.mysql.MySQLContainer
 import java.math.BigDecimal
 import java.util.UUID
@@ -158,6 +163,25 @@ class RentalRepositoryTest {
     }
 
     @Test
+    fun `rental history loads distinct cars with two queries`() = rentalTest {
+        val cars = listOf(this, Fixture(), Fixture())
+        val created = cars.map { repository.create(it.input, renterId, it.carId) }
+        val statements = mutableListOf<String>()
+        val history = withTransaction {
+            addLogger(object : SqlLogger {
+                override fun log(context: StatementContext, transaction: Transaction) {
+                    statements += context.sql(transaction)
+                }
+            })
+            repository.findAllByUserId(renterId)
+        }
+        assertEquals(created.map { it.id }.toSet(), history.map { it.id }.toSet())
+        assertEquals(cars.map { it.carId }.toSet(), history.map { it.car.id }.toSet())
+        assertTrue(history.all { it.car.brand == "Test" && it.car.type == "Car" })
+        assertEquals(2, statements.count { it.trimStart().startsWith("SELECT", ignoreCase = true) }, statements.toString())
+    }
+
+    @Test
     fun `rejects mismatching car id without saving`() = rentalTest {
         assertFailsWith<IllegalArgumentException> { create(input.copy(carId = Long.MAX_VALUE)) }
         assertTrue(rentals().isEmpty())
@@ -169,6 +193,47 @@ class RentalRepositoryTest {
             assertFailsWith<IllegalArgumentException> { create(invalid) }
         }
         assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun `rejects sub-microsecond endpoints without saving`() = rentalTest {
+        for (invalid in listOf(
+            input.copy(startAt = "2100-11-01T10:00:00.000000001"),
+            input.copy(endAt = "2100-11-01T11:30:00.000000001"),
+            input.copy(startAt = "2100-11-01T10:00:00.000000001", endAt = "2100-11-01T10:00:00.000000002")
+        )) {
+            val error = assertFailsWith<IllegalArgumentException> { create(invalid) }
+            assertEquals("Rental times must have at most microsecond precision", error.message)
+        }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun `microsecond endpoints survive database round trip`() = rentalTest {
+        val precise = input.copy(startAt = "2100-11-01T10:00:00.123456", endAt = "2100-11-01T11:30:00.654321")
+        val result = create(precise)
+        val saved = assertNotNull(repository.findById(result.id))
+        assertEquals(LocalDateTime.parse(precise.startAt), LocalDateTime.parse(saved.startAt))
+        assertEquals(LocalDateTime.parse(precise.endAt), LocalDateTime.parse(saved.endAt))
+    }
+
+    @Test
+    fun `rejects endpoints outside MySQL year range without saving`() = rentalTest {
+        for (invalid in listOf(
+            input.copy(startAt = "+10000-11-01T10:00:00", endAt = "+10000-11-01T11:00:00"),
+            input.copy(endAt = "+10000-11-01T11:00:00"),
+            input.copy(startAt = "0999-11-01T10:00:00")
+        )) {
+            val error = assertFailsWith<IllegalArgumentException> { create(invalid) }
+            assertEquals("Rental times must be between years 1000 and 9999", error.message)
+        }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun `accepts rental in final supported year`() = rentalTest {
+        val result = create(input.copy(startAt = "9999-12-31T22:00:00", endAt = "9999-12-31T23:00:00"))
+        assertEquals(result, repository.findById(result.id))
     }
 
     @Test
@@ -342,14 +407,17 @@ class RentalRepositoryTest {
 
     @Test
     fun `cancellation records current time and repeated requests preserve it`() = rentalTest {
-        val existing = create()
-        val zone = TimeZone.of("Europe/Amsterdam")
-        // Allow for database timestamp precision when comparing the recorded time.
+        val zone = TimeZone.UTC
         val earliest = (Clock.System.now() - 1.seconds).toLocalDateTime(zone)
+        val existing = create()
+        // Allow for database timestamp precision when comparing the recorded time.
         repository.changeStatus(existing.id, RentalStatus.CANCELLED, renterId)
         val latest = Clock.System.now().toLocalDateTime(zone)
         val saved = repository.findById(existing.id)!!
         val cancelledAt = LocalDateTime.parse(assertNotNull(saved.cancelledAt))
+        val createdAt = LocalDateTime.parse(saved.createdAt)
+        assertTrue(createdAt >= earliest && createdAt <= cancelledAt)
+        assertTrue(cancelledAt.toInstant(zone) - createdAt.toInstant(zone) < 10.seconds)
         assertTrue(cancelledAt >= earliest && cancelledAt <= latest)
         assertEquals(saved, repository.changeStatus(existing.id, RentalStatus.CANCELLED, renterId))
         assertEquals(saved, repository.findById(existing.id))

@@ -17,8 +17,13 @@ import kotlin.text.toLongOrNull
 private suspend fun ApplicationCall.carIdOrRespond(carRepository: ICarRepository): Long? {
     val id = parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
 
-    if (id == null || carRepository.findById(id) == null) {
+    if (id == null) {
         respond(HttpStatusCode.BadRequest, "Invalid car ID")
+        return null
+    }
+
+    if (carRepository.findById(id) == null) {
+        respond(HttpStatusCode.NotFound, "Car not found")
         return null
     }
 

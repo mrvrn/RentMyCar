@@ -47,13 +47,13 @@ class RentalRoutesTest {
 
     @Test
     fun `missing numeric car stops before creating rental`() = checkRoute(
-        path = "/cars/9223372036854775807/rental", expectedStatus = HttpStatusCode.BadRequest, expectCall = false
+        path = "/cars/9223372036854775807/rental", expectedStatus = HttpStatusCode.NotFound, expectCall = false
     )
 
     @Test
     fun `missing numeric car lookup returns one error`() = checkRoute(
         method = HttpMethod.Get, path = "/cars/9223372036854775807",
-        authenticated = false, expectedStatus = HttpStatusCode.BadRequest, expectCall = false
+        authenticated = false, expectedStatus = HttpStatusCode.NotFound, expectCall = false
     )
 
     @Test
