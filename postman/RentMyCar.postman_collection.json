@@ -109,6 +109,21 @@
       "key": "unavailableCarId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "otherOwnerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherOwnerPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherOwnerToken",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -269,6 +284,8 @@
               "pm.test('Status is 200', () => pm.response.to.have.status(200));",
               "if (pm.response.code === 200) {",
               "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('fixturePickupId', data.pickupId);",
+              "  pm.collectionVariables.set('fixtureDropOffId', data.dropOffId);",
               "  pm.test('Correct car', () => pm.expect(data.id).to.eql(Number(pm.variables.get('carId'))));",
               "  pm.test('Car is available', () => pm.expect(data.isAvailable).to.eql(true));",
               "  pm.test('Hourly price is valid', () => pm.expect(data.pricePerHour).to.be.a('number').and.at.least(0));",
@@ -3670,6 +3687,2674 @@
             "exec": [
               "pm.test('Status is 409', () => pm.response.to.have.status(409));",
               "pm.test('Car is explicitly unavailable', () => pm.expect(pm.response.text()).to.eql('Car is unavailable'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "89 Reject login with malformed JSON",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "90 Reject login with missing fields",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "91 Reject login with missing password",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{email}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "92 Reject login with missing email",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"password\":\"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "93 Reject login with null email",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":null,\"password\":\"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "94 Reject oversized UTF-8 login password",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"ééééééééééééééééééééééééééééééééééééé\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "95 Register password at bcrypt byte boundary",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{boundaryEmail}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 1, Amsterdam\",\n  \"password\": \"éééééééééééééééééééééééééééééééééééé\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('boundaryEmail', 'boundary.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "96 Login at bcrypt byte boundary",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{boundaryEmail}}\",\n  \"password\": \"éééééééééééééééééééééééééééééééééééé\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "97 Reject longer login password sharing valid 72-byte prefix",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{boundaryEmail}}\",\n  \"password\": \"ééééééééééééééééééééééééééééééééééééx\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "98 List public cars with expected fields",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "",
+              "const cars = pm.response.json();",
+              "pm.test('Selected car is listed with its fields', () => {",
+              "  pm.expect(cars).to.be.an('array');",
+              "  const car = cars.find(c => c.id === Number(pm.variables.get('carId')));",
+              "  pm.expect(car).to.be.an('object');",
+              "  for (const key of ['ownerId', 'brand', 'type', 'licensePlate', 'pricePerHour', 'pickupId', 'dropOffId', 'isAvailable']) {",
+              "    pm.expect(car).to.have.property(key);",
+              "  }",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "99 Create dedicated management car with normalized plate",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"  {{managedPlate}}  \",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.unset('managedCarId');",
+              "pm.collectionVariables.set('managedPlate', 'pm-' + pm.variables.replaceIn('{{$guid}}'));",
+              "pm.collectionVariables.set('normalizedManagedPlate', pm.variables.get('managedPlate').toUpperCase());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const car = pm.response.json();",
+              "  pm.collectionVariables.set('managedCarId', car.id);",
+              "  pm.test('Plate normalized and availability defaults to false', () => {",
+              "    pm.expect(car.licensePlate).to.eql(pm.variables.get('normalizedManagedPlate'));",
+              "    pm.expect(car.isAvailable).to.eql(false);",
+              "    const payload = JSON.parse(require('buffer').Buffer.from(pm.variables.get('ownerToken').split('.')[1], 'base64').toString());",
+              "    pm.expect(car.ownerId).to.eql(payload.userId);",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "100 Reject normalized duplicate plate on create",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{normalizedManagedPlate}}\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "101 Reject car creation without token",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"UNAUTHORIZED\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "102 Reject renter creating car",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"UNAUTHORIZED\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "103 Reject PUT car without token",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"Unauthorized\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "104 Reject renter PUT car",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"Unauthorized\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "105 Reject DELETE car without token",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "106 Reject renter DELETE car",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "107 Authorization failures preserve management car",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Car unchanged', () => pm.expect(pm.response.json().brand).to.eql('Coverage'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "108 Reject car create with blank brand",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\" \",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "109 Reject car update with blank brand",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \" \"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "110 Reject car create with blank type",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\" \",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "111 Reject car update with blank type",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \" \"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "112 Reject car create with blank plate",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\" \",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "113 Reject car update with blank plate",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"licensePlate\": \" \"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "114 Reject car create with zero price",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":0,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "115 Reject car update with zero price",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pricePerHour\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "116 Reject car create with negative price",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":-1,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "117 Reject car update with negative price",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pricePerHour\": -1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "118 Reject car create with price overflow",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":100000000,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "119 Reject car update with price overflow",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pricePerHour\": 100000000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "120 Reject car create with extra price precision",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":1.001,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "121 Reject car update with extra price precision",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pricePerHour\": 1.001\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "122 Reject car create with missing pickup",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":9223372036854775000,\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "123 Reject car update with missing pickup",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pickupId\": 9223372036854775000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "124 Reject car create with missing drop-off",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-invalid\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":9223372036854775000}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "125 Reject car update with missing drop-off",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dropOffId\": 9223372036854775000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "126 Reject malformed car creation",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "127 Reject incomplete car creation",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "128 Reject malformed car update",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "129 Failed multi-field update rolls back all fields",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"Must roll back\",\n  \"dropOffId\": 9223372036854775000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "130 Rejected updates preserve stored fields",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Original values retained', () => {",
+              "  const car = pm.response.json();",
+              "  pm.expect(car.brand).to.eql('Coverage'); pm.expect(car.pricePerHour).to.eql(12.5);",
+              "  pm.expect(car.licensePlate).to.eql(pm.variables.get('normalizedManagedPlate'));",
+              "  pm.expect(car.dropOffId).to.eql(Number(pm.variables.get('fixtureDropOffId')));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "131 Reject PUT car invalid ID",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/invalid",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "132 Reject PUT missing car",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/9223372036854775807",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "133 Reject DELETE car invalid ID",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/invalid",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "134 Reject DELETE missing car",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/9223372036854775807",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "135 Create second management car",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Coverage\",\"type\":\"Hatchback\",\"licensePlate\":\"{{managedPlate}}-second\",\"pricePerHour\":12.5,\"pickupId\":{{fixturePickupId}},\"dropOffId\":{{fixtureDropOffId}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "pm.collectionVariables.set('secondManagedCarId', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "136 Reject duplicate plate update",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{secondManagedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"licensePlate\": \"  {{managedPlate}}  \"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "137 Update every editable car field",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"brand\":\"Updated\",\"type\":\"Estate\",\"licensePlate\":\" {{managedPlate}}-updated \",\"pricePerHour\":22.25,\"pickupId\":{{fixtureDropOffId}},\"dropOffId\":{{fixturePickupId}},\"pictures\":[\"https://example.com/updated.png\"],\"isAvailable\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "pm.collectionVariables.set('managedCarSnapshot', JSON.stringify(pm.response.json()));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "138 Read persisted car updates",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "",
+              "const car = pm.response.json();",
+              "pm.test('All editable fields persisted', () => {",
+              "  pm.expect(car.brand).to.eql('Updated'); pm.expect(car.type).to.eql('Estate');",
+              "  pm.expect(car.licensePlate).to.eql(pm.variables.get('normalizedManagedPlate') + '-UPDATED');",
+              "  pm.expect(car.pricePerHour).to.eql(22.25);",
+              "  pm.expect(car.pickupId).to.eql(Number(pm.variables.get('fixtureDropOffId')));",
+              "  pm.expect(car.dropOffId).to.eql(Number(pm.variables.get('fixturePickupId')));",
+              "  pm.expect(car.pictures).to.eql(['https://example.com/updated.png']);",
+              "  pm.expect(car.isAvailable).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "139 Empty update preserves car",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Omitted fields preserved', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.variables.get('managedCarSnapshot'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "140 Accept maximum car price",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pricePerHour\": 99999999.99\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Maximum price returned', () => pm.expect(pm.response.json().pricePerHour).to.eql(99999999.99));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "141 Accept trailing decimal zeros",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"pricePerHour\":12.5000}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Exact price retained', () => pm.expect(pm.response.json().pricePerHour).to.eql(12.5));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "142 Clear pictures and disable availability",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pictures\": [],\n  \"isAvailable\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "143 Read cleared pictures and disabled availability",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Pictures and availability persisted', () => {",
+              "  pm.expect(pm.response.json().pictures).to.eql([]);",
+              "  pm.expect(pm.response.json().isAvailable).to.eql(false);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "144 Reject booking the disabled management car",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}/rental",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"carId\":{{managedCarId}},\"startAt\":\"{{startAt}}\",\"endAt\":\"{{endAt}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              "pm.test('Unavailable car reason', () => pm.expect(pm.response.text()).to.eql('Car is unavailable'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "145 Reject deleting car with rental history",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/{{carId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+              "pm.test('History protected', () => pm.expect(pm.response.json().error).to.eql('Car has associated rentals and cannot be deleted'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "146 Delete dedicated car managedCarId",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 204', () => pm.response.to.have.status(204));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "147 Deleted car managedCarId is absent",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{managedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "148 Delete dedicated car secondManagedCarId",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/{{secondManagedCarId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ownerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 204', () => pm.response.to.have.status(204));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "149 Deleted car secondManagedCarId is absent",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cars/{{secondManagedCarId}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "150 Login unrelated owner (optional)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{otherOwnerEmail}}\",\n  \"password\": \"{{otherOwnerPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.unset('otherOwnerToken');",
+              "if (!pm.variables.get('otherOwnerEmail') || !pm.variables.get('otherOwnerPassword')) {",
+              "  console.info('Skipping unrelated-owner checks: configure otherOwnerEmail and otherOwnerPassword.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "pm.test('Account is an owner', () => pm.expect(pm.response.json().role).to.eql('OWNER'));",
+              "pm.collectionVariables.set('otherOwnerToken', pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "151 Reject unrelated owner deciding rental (optional)",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{otherOwnerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('otherOwnerEmail') || !pm.variables.get('otherOwnerPassword')) {",
+              "  console.info('Skipping unrelated-owner checks: configure otherOwnerEmail and otherOwnerPassword.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "152 Reject unrelated owner reading rental (optional)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rentals/{{rentalId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{otherOwnerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('otherOwnerEmail') || !pm.variables.get('otherOwnerPassword')) {",
+              "  console.info('Skipping unrelated-owner checks: configure otherOwnerEmail and otherOwnerPassword.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "153 Reject unrelated owner updating car (optional)",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/cars/{{carId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{otherOwnerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"Unauthorized\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('otherOwnerEmail') || !pm.variables.get('otherOwnerPassword')) {",
+              "  console.info('Skipping unrelated-owner checks: configure otherOwnerEmail and otherOwnerPassword.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "154 Reject unrelated owner deleting car (optional)",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cars/{{carId}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{otherOwnerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('otherOwnerEmail') || !pm.variables.get('otherOwnerPassword')) {",
+              "  console.info('Skipping unrelated-owner checks: configure otherOwnerEmail and otherOwnerPassword.');",
+              "  pm.execution.skipRequest();",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+              ""
             ]
           }
         }

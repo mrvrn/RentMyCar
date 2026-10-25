@@ -319,6 +319,23 @@ class AuthorizationTest {
         assertFalse(carRepository.contains(1))
     }
 
+    @Test
+    fun updateAndDeleteRejectMissingAndRenterTokensWithoutChangingCar() = authzTest {
+        for (method in listOf(io.ktor.http.HttpMethod.Put, io.ktor.http.HttpMethod.Delete)) {
+            for (renterToken in listOf(null, signedToken(renterId, "RENTER"))) {
+                val response = client.request("/cars/1") {
+                    this.method = method
+                    if (renterToken != null) bearerAuth(renterToken)
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"brand":"Unauthorized change"}""")
+                }
+                assertEquals(if (renterToken == null) HttpStatusCode.Unauthorized else HttpStatusCode.Forbidden, response.status)
+                assertTrue(carRepository.contains(1))
+                assertEquals("Test", carRepository.findById(1)?.brand)
+            }
+        }
+    }
+
     private fun carRequest(
         requestOwnerId: Long = ownerId,
         pickupId: Long = 1,

@@ -108,6 +108,27 @@ class JwtAuthTest {
     // --- /login ---
 
     @Test
+    fun `login rejects malformed incomplete and incorrectly typed bodies`() = jwtTest {
+        for (body in listOf("{", "{}", """{"email":"$EMAIL"}""", """{"password":"$PASSWORD"}""",
+            """{"email":null,"password":"$PASSWORD"}""")) {
+            val response = client.post("/login") {
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }
+            assertEquals(HttpStatusCode.BadRequest, response.status, body)
+        }
+    }
+
+    @Test
+    fun `login accepts 72 UTF-8 bytes but rejects a longer password with the same prefix`() = jwtTest {
+        val boundaryPassword = "é".repeat(36)
+        val email = "bcrypt-boundary@example.com"
+        repository.create(CreateUserDto("Boundary User", email, "0612345678", "Street 1", boundaryPassword))
+        assertEquals(HttpStatusCode.OK, client.login(email, boundaryPassword).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login(email, boundaryPassword + "x").status)
+    }
+
+    @Test
     fun `login with valid credentials returns signed token`() = jwtTest {
         val response = client.login(EMAIL, PASSWORD)
         assertEquals(HttpStatusCode.OK, response.status)

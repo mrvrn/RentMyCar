@@ -11,6 +11,12 @@ import org.jetbrains.exposed.v1.core.eq
 import java.sql.SQLException
 import java.util.Locale
 
+private fun validateHourlyRate(price: java.math.BigDecimal) {
+    require(price.signum() >= 0) { "Hourly rate must not be negative" }
+    require(price <= "99999999.99".toBigDecimal()) { "Hourly rate exceeds the supported maximum" }
+    require(price.stripTrailingZeros().scale() <= 2) { "Hourly rate must have at most two decimal places" }
+}
+
 class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     override fun toDto(entity: Car): CarDto = entity.toDto()
 
@@ -28,7 +34,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     }
 
     override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto {
-        require(car.pricePerHour.signum() >= 0) { "Hourly rate must not be negative" }
+        validateHourlyRate(car.pricePerHour)
         try {
             return withTransaction {
                 val normalizedPlate = car.licensePlate.trim().uppercase(Locale.ROOT)
@@ -65,6 +71,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     }
 
     override suspend fun update(id: Long, car: UpdateCarDto): CarDto? {
+        car.pricePerHour?.let(::validateHourlyRate)
         try {
             return withTransaction {
                 val existing = Car.findById(id) ?: return@withTransaction null

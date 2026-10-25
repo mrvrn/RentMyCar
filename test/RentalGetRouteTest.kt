@@ -83,6 +83,22 @@ class RentalGetRouteTest {
         expectedLookups = emptyList(),
     )
 
+    @Test
+    fun `rental list uses authenticated user and serializes car summaries`() = checkGet(
+        list = true, expectedLookups = listOf(7L),
+    )
+
+    @Test
+    fun `owner rental list returns an empty array when owner has no personal bookings`() = checkGet(
+        list = true, userId = 8L, expectedLookups = listOf(8L),
+    )
+
+    @Test
+    fun `rental list requires authentication before lookup`() = checkGet(
+        list = true, authenticated = false, expectedStatus = HttpStatusCode.Unauthorized,
+        expectedBody = "Token is not valid or has expired", expectedLookups = emptyList(),
+    )
+
     private fun checkGet(
         id: String = "42",
         userId: Long = 7L,
@@ -92,6 +108,7 @@ class RentalGetRouteTest {
         expectedBody: String? = null,
         expectedLookups: List<Long> = listOf(42L),
         role: String? = if (userId == 8L) "OWNER" else "RENTER",
+        list: Boolean = false,
     ) = testApplication {
         val repository = LookupRepository(exists)
         environment {
@@ -114,14 +131,19 @@ class RentalGetRouteTest {
             .withClaim("role", role)
             .sign(Algorithm.HMAC256("rental-get-test-secret"))
 
-        val response = client.get("/rentals/$id") {
+        val response = client.get(if (list) "/rentals" else "/rentals/$id") {
             if (authenticated) bearerAuth(token)
         }
 
         assertEquals(expectedStatus, response.status)
         assertEquals(expectedLookups, repository.lookups)
         if (expectedStatus == HttpStatusCode.OK) {
-            assertEquals(repository.rental, Json.decodeFromString<RentalDetailsDto>(response.bodyAsText()))
+            if (list) {
+                val expected = if (userId == 7L) listOf(repository.overview) else emptyList()
+                assertEquals(expected, Json.decodeFromString<List<RentalOverviewDto>>(response.bodyAsText()))
+            } else {
+                assertEquals(repository.rental, Json.decodeFromString<RentalDetailsDto>(response.bodyAsText()))
+            }
         } else {
             assertEquals(expectedBody, response.bodyAsText())
         }
@@ -133,6 +155,8 @@ class RentalGetRouteTest {
             42L, "2100-11-01T10:00", "2100-11-01T11:30", RentalStatus.PENDING,
             "18.75", RentalCarDto(12L, "Test", "Car", null), 7L, "2026-10-23T10:00", null,
         )
+        val overview = RentalOverviewDto(rental.id, rental.startAt, rental.endAt, rental.status,
+            rental.totalPrice, rental.car)
 
         override suspend fun findDetailsById(id: Long, loggedInUserId: Long): RentalDetailsDto? {
             lookups.add(id)
@@ -147,7 +171,10 @@ class RentalGetRouteTest {
 
         override fun toDto(entity: Rental): RentalDto = error("Unexpected mapping")
         override suspend fun findAll(): List<RentalDto> = error("Unexpected lookup")
-        override suspend fun findAllByUserId(userId: Long): List<RentalOverviewDto> = error("Unexpected lookup")
+        override suspend fun findAllByUserId(userId: Long): List<RentalOverviewDto> {
+            lookups += userId
+            return if (userId == rental.renterId) listOf(overview) else emptyList()
+        }
         override suspend fun create(rental: CreateRentalDto, renterId: Long, carId: Long): RentalDto =
             error("Unexpected creation")
         override suspend fun changeStatus(rentalId: Long, status: RentalStatus, loggedInUserId: Long): RentalDto =
