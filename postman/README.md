@@ -2,14 +2,30 @@
 
 1. Start the database and Ktor application (see [local setup](../docs/docker.md)). The application requires `JWT_SECRET` and defaults to port 8080.
 2. Import `RentMyCar.postman_collection.json` into Postman.
-3. Set the collection variables `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`. The owner credentials must belong to the owner of the selected car. Choose an existing available car with no booking during the test period. The API has no car creation endpoint; add a car and its related records to your development database if necessary.
+3. Set the collection variables `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`. The owner credentials must belong to the owner of the selected car. Choose an existing available car with no booking during the test period, or create one using the fixture setup below.
 4. Run the collection in order, with one iteration, using Collection Runner.
+
+To create a car fixture, log in through `POST /login` with an existing `OWNER` account and send `POST /cars` with its JWT as a Bearer token and `Content-Type: application/json`:
+
+```json
+{
+  "brand": "Ford",
+  "type": "Puma",
+  "licensePlate": "TEST-01",
+  "pricePerHour": 12.50,
+  "pickupId": 1,
+  "dropOffId": 2,
+  "isAvailable": true
+}
+```
+
+Replace `pickupId` and `dropOffId` with existing location IDs and use a unique license plate. Set `isAvailable` to `true`; it defaults to `false` when omitted. Set the collection's `carId` to the `id` in the `201 Created` response and use that owner's credentials for `ownerEmail` and `ownerPassword`. Direct database seeding of the owner, locations, and car remains an alternative for development fixtures.
 
 Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses `POST /cars/{{carId}}/rental` with that token and generates a 10:00–12:00 Amsterdam local-time period on the UTC calendar date seven days ahead, avoiding daylight-saving transition hours. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`. All creation and rebooking requests use this car route.
 
 Valid registration requests receive the same `200 OK` acknowledgement for new and existing email addresses. Request 08 checks this generic duplicate-registration response; it does not indicate whether an account was created. Existing accounts are not modified.
 
-For manual use, send requests 01, 02, and 04 in order. To log in with an existing account, set `email` and `password`, skip registration, and send request 02. Avoid environment variables named `email`, `password`, `token`, `startAt`, or `endAt`, since they override collection variables.
+For manual use, send requests 01, 02, 03, and 04 in order. To use an existing account, set `email` and `password`, skip registration, and send requests 02, 03, and 04 in order. Request 03 initializes `pricePerHourCents`, which request 04 needs for its total-price assertion. Avoid environment variables named `email`, `password`, `token`, `startAt`, or `endAt`, since they override collection variables.
 
 The 89 requests cover registration, login, profiles, car lookup, rental creation, overlapping bookings, missing authentication, reversed dates, duplicate registration, invalid credentials, and invalid registration data. Status tests also cover owner login, renter access denied, unsupported transitions, unknown enum values, invalid and missing rental IDs, rejection, rebooking the rejected period, confirmation, and attempts to change decided reservations.
 
