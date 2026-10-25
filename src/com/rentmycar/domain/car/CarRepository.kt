@@ -11,6 +11,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     override fun toDto(entity: Car): CarDto = entity.toDto()
 
     override suspend fun create(car: CreateCarDto) {
+        require(car.pricePerHour.signum() >= 0) { "Hourly rate must not be negative" }
         withTransaction {
             Car.new {
                 owner = User[car.ownerId]

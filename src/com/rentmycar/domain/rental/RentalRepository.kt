@@ -33,6 +33,7 @@ internal fun calculateRentalPrice(
     start: LocalDateTime,
     end: LocalDateTime
 ): BigDecimal {
+    require(pricePerHour.signum() >= 0) { "Hourly rate must not be negative" }
     require(end > start) { "End time must be after start time" }
     // Use UTC to measure the supplied local clock times without DST adjustments.
     val duration = end.toInstant(TimeZone.UTC) - start.toInstant(TimeZone.UTC)
@@ -68,16 +69,22 @@ class RentalRepository : IRentalRepository, BaseRepository<Rental, RentalDto>(Re
         require(start.year in 1000..9999 && end.year in 1000..9999) {
             "Rental times must be between years 1000 and 9999"
         }
+
         require(start.nanosecond % 1_000 == 0 && end.nanosecond % 1_000 == 0) {
             "Rental times must have at most microsecond precision"
         }
         val now = kotlin.time.Clock.System.now()
         val zone = TimeZone.of("Europe/Amsterdam")
+        val startInstant = start.toInstant(zone)
+        val endInstant = end.toInstant(zone)
 
-        require(start.toInstant(zone) > now) {
+        require(startInstant.toLocalDateTime(zone) == start && endInstant.toLocalDateTime(zone) == end) {
+            "Rental times must exist in Europe/Amsterdam"
+        }
+        require(startInstant > now) {
             "Start time must be in the future"
         }
-        require(end > start) {
+        require(end > start && endInstant > startInstant) {
             "End time must be after start time"
         }
 

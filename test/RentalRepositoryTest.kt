@@ -265,6 +265,47 @@ class RentalRepositoryTest {
     }
 
     @Test
+    fun `rejects nonexistent Amsterdam endpoints without saving`() = rentalTest {
+        for ((start, end) in listOf(
+            "2100-03-28T02:30" to "2100-03-28T03:00",
+            "2100-03-28T01:30" to "2100-03-28T02:30",
+            "2100-03-28T02:00" to "2100-03-28T02:30"
+        )) {
+            val error = assertFailsWith<IllegalArgumentException> {
+                create(input.copy(startAt = start, endAt = end))
+            }
+            assertEquals("Rental times must exist in Europe/Amsterdam", error.message)
+        }
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun `accepts valid DST periods and keeps local clock pricing`() = rentalTest {
+        for ((start, end) in listOf(
+            "2100-03-28T01:30" to "2100-03-28T03:30",
+            "2100-10-31T01:30" to "2100-10-31T03:30"
+        )) {
+            val result = create(input.copy(startAt = start, endAt = end))
+            assertEquals("25.00", result.totalPrice)
+            assertEquals(result, repository.findById(result.id))
+        }
+    }
+
+    @Test
+    fun `rejects negative stored hourly rate without saving`() = rentalTest {
+        transaction(database) { Car[carId].pricePerHour = BigDecimal("-12.50") }
+        val error = assertFailsWith<IllegalArgumentException> { create() }
+        assertEquals("Hourly rate must not be negative", error.message)
+        assertTrue(rentals().isEmpty())
+    }
+
+    @Test
+    fun `accepts zero stored hourly rate`() = rentalTest {
+        transaction(database) { Car[carId].pricePerHour = BigDecimal.ZERO }
+        assertEquals("0.00", create().totalPrice)
+    }
+
+    @Test
     fun `rejects price above database maximum without saving`() = rentalTest {
         transaction(database) { Car[carId].pricePerHour = BigDecimal("99999999.99") }
         assertFailsWith<IllegalArgumentException> { create() }

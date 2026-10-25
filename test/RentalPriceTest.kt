@@ -71,6 +71,15 @@ class RentalPriceTest {
     }
 
     @Test
+    fun `rejects negative hourly rates even when the rounded total would be zero`() {
+        for (rate in listOf(BigDecimal("-12.50"), BigDecimal("-0.01"))) {
+            assertFailsWith<IllegalArgumentException> {
+                calculateRentalPrice(rate, start, LocalDateTime.parse("2026-11-01T10:00:01"))
+            }
+        }
+    }
+
+    @Test
     fun `zero hourly rate produces zero total`() {
         assertEquals(BigDecimal("0.00"), calculateRentalPrice(
             BigDecimal.ZERO, start, LocalDateTime.parse("2026-11-02T10:00")

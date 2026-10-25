@@ -1,6 +1,7 @@
 package com.rentmycar.server.routing
 
 import com.rentmycar.domain.car.ICarRepository
+import com.rentmycar.domain.car.dto.CarDto
 import com.rentmycar.domain.rental.IRentalRepository
 import com.rentmycar.domain.rental.RentalNotFoundException
 import com.rentmycar.domain.rental.RentalUnavailableException
@@ -14,7 +15,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlin.text.toLongOrNull
 
-private suspend fun ApplicationCall.carIdOrRespond(carRepository: ICarRepository): Long? {
+private suspend fun ApplicationCall.carOrRespond(carRepository: ICarRepository): CarDto? {
     val id = parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
 
     if (id == null) {
@@ -22,32 +23,27 @@ private suspend fun ApplicationCall.carIdOrRespond(carRepository: ICarRepository
         return null
     }
 
-    if (carRepository.findById(id) == null) {
+    val car = carRepository.findById(id)
+    if (car == null) {
         respond(HttpStatusCode.NotFound, "Car not found")
         return null
     }
 
-    return id
+    return car
 }
 
 fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalRepository, userRepository: IUserRepository) {
     route("/cars") {
         route("/{id}") {
             get {
-                val id = call.carIdOrRespond(repository) ?: return@get
-                val car = repository.findById(id)
-
-                if (car == null) {
-                    call.respond(HttpStatusCode.NotFound, "Car not found")
-                    return@get
-                }
+                val car = call.carOrRespond(repository) ?: return@get
 
                 call.respond(car)
             }
 
             authenticate("auth-jwt") {
                 post("/rental") {
-                    val carId = call.carIdOrRespond(repository) ?: return@post
+                    val carId = (call.carOrRespond(repository) ?: return@post).id
                     val renterId = call.userIdOrRespond(userRepository) ?: return@post
 
                     val input = call.receive<CreateRentalDto>()

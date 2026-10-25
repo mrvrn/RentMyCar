@@ -51,9 +51,22 @@ class RentalRoutesTest {
     )
 
     @Test
+    fun `successful car lookup fetches the car once`() = checkRoute(
+        method = HttpMethod.Get, path = "/cars/12", authenticated = false,
+        expectedStatus = HttpStatusCode.OK, expectCall = false, expectedCarLookups = listOf(12L)
+    )
+
+    @Test
+    fun `invalid car lookup does not query repository`() = checkRoute(
+        method = HttpMethod.Get, path = "/cars/invalid", authenticated = false,
+        expectedStatus = HttpStatusCode.BadRequest, expectCall = false, expectedCarLookups = emptyList()
+    )
+
+    @Test
     fun `missing numeric car lookup returns one error`() = checkRoute(
         method = HttpMethod.Get, path = "/cars/9223372036854775807",
-        authenticated = false, expectedStatus = HttpStatusCode.NotFound, expectCall = false
+        authenticated = false, expectedStatus = HttpStatusCode.NotFound, expectCall = false,
+        expectedCarLookups = listOf(Long.MAX_VALUE)
     )
 
     @Test
@@ -144,8 +157,10 @@ class RentalRoutesTest {
         failure: RuntimeException? = null,
         expectedStatus: HttpStatusCode = HttpStatusCode.Created,
         expectCall: Boolean = true,
+        expectedCarLookups: List<Long>? = null,
     ) = testApplication {
         val repository = RecordingRepository(target, failure)
+        val cars = TestCarRepository()
         environment {
             config = MapApplicationConfig(
                 "jwt.secret" to "rental-routes-test-secret",
@@ -160,7 +175,7 @@ class RentalRoutesTest {
             routing {
                 val users = TestUserRepository()
                 rentalRoutes(repository, users)
-                carRoutes(TestCarRepository(), repository, users)
+                carRoutes(cars, repository, users)
             }
         }
         val token = JWT.create()
@@ -175,6 +190,7 @@ class RentalRoutesTest {
             setBody(body)
         }
         assertEquals(expectedStatus, response.status, "$method $path with $body")
+        expectedCarLookups?.let { assertEquals(it, cars.lookups) }
         if (!expectCall) {
             assertNull(repository.created)
             assertNull(repository.changed)
@@ -186,7 +202,11 @@ class RentalRoutesTest {
             assertNull(repository.created)
         }
         if (expectedStatus == HttpStatusCode.OK || expectedStatus == HttpStatusCode.Created) {
-            assertEquals(repository.result, Json.decodeFromString<RentalDto>(response.bodyAsText()))
+            if (method == HttpMethod.Get) {
+                assertEquals(cars.result, Json.decodeFromString<CarDto>(response.bodyAsText()))
+            } else {
+                assertEquals(repository.result, Json.decodeFromString<RentalDto>(response.bodyAsText()))
+            }
         } else if (failure != null) {
             assertEquals(failure.message, response.bodyAsText())
         }
@@ -204,9 +224,12 @@ class RentalRoutesTest {
     }
 
     private class TestCarRepository : ICarRepository {
-        override suspend fun findById(id: Long): CarDto? = if (id == 12L) {
-            CarDto(12L, 8L, "Test", "Car", "TEST-12", java.math.BigDecimal("12.50"), 1L, 1L, emptyList(), true)
-        } else null
+        val lookups = mutableListOf<Long>()
+        val result = CarDto(12L, 8L, "Test", "Car", "TEST-12", java.math.BigDecimal("12.50"), 1L, 1L, emptyList(), true)
+        override suspend fun findById(id: Long): CarDto? {
+            lookups += id
+            return result.takeIf { id == it.id }
+        }
 
         override fun toDto(entity: Car): CarDto = error("Unexpected mapping")
         override suspend fun findAll(): List<CarDto> = error("Unexpected lookup")
