@@ -15,6 +15,9 @@
 # Local Docker configuration
 /.env
 
+# Local Postman configuration
+/postman/postman.local.environment.json
+
 # IntelliJ
 .idea/
 *.iml

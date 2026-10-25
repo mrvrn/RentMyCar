@@ -1,9 +1,15 @@
 # RentMyCar Postman suite
 
-1. Start the database and Ktor application (see [local setup](../docs/docker.md)). The application requires `JWT_SECRET` and defaults to port 8080.
+1. Start the database and Ktor application with `DEMO_SEED=true` (see [local setup](../docs/docker.md)). The application requires `JWT_SECRET` and defaults to port 8080.
 2. Import `RentMyCar.postman_collection.json` into Postman.
-3. Set the collection variables `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`. The owner credentials must belong to the owner of the selected car. Choose an existing available car with no booking during the test period, or create one using the fixture setup below.
+3. Set the collection variables `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`. The owner credentials must belong to the owner of the selected car. Choose an existing available demo car with no booking during the test period, or create one using the fixture setup below.
 4. Run the collection in order, with one iteration, using Collection Runner.
+
+The following are demo-only values, loaded when `DEMO_SEED=true`: owner
+`owner@example.com` / `Owner12345`, renter one `renter1@example.com` /
+`Renter12345`, and renter two `renter2@example.com` / `Renter12345`. Select one
+of the seeded `DEMO-001-A` through `DEMO-006-A` cars for `carId`; use the owner
+credentials above for `ownerEmail` and `ownerPassword`.
 
 To create a car fixture, log in through `POST /login` with an existing `OWNER` account and send `POST /cars` with its JWT as a Bearer token and `Content-Type: application/json`:
 
@@ -74,7 +80,7 @@ Runs create persistent users and rentals, ending with the test reservations reje
 With Newman installed, run from the project root:
 
 ```sh
-newman run postman/RentMyCar.postman_collection.json -e postman.local.environment.json
+newman run postman/RentMyCar.postman_collection.json -e postman/postman.local.environment.json
 ```
 
 Create the local environment file outside version control with `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`, or configure those collection variables in Postman. Regenerate the collection from its source with `node postman/generate.cjs`.

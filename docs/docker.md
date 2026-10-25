@@ -51,6 +51,10 @@ and `MYSQL_PORT` for the local JDBC URL. Set `DATABASE_URL` to override that URL
 entirely. System environment variables take precedence over `.env` values.
 In IntelliJ, set the run configuration's working directory to the project root.
 
+Set `DEMO_SEED=true` before starting Ktor to load local demo users, locations, and
+cars. Leave it as `false` for a schema-only database; demo data is never loaded by
+the normal migration location.
+
 MySQL only uses the initialization credentials and database name when its data
 volume is empty. Changing `.env` after initialization does not change existing
 database users or passwords; update those through SQL or recreate the volume

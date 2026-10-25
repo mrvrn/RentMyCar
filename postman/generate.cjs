@@ -311,6 +311,7 @@ for (const [label, changes, message] of [
 }
 add('Reject malformed registration JSON', '/register', null, 400, { rawBody: '{' });
 add('Reject missing registration fields', '/register', {}, 400);
+add('Reject nonnumeric car lookup', '/cars/abc', null, 400, { method: 'GET' });
 add('Reject missing car lookup', '/cars/9223372036854775807', null, 404, { method: 'GET' });
 add('Reject booking a missing car', '/cars/9223372036854775807/rental',
   rental, 404, { auth: true });
