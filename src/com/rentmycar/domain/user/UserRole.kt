@@ -7,6 +7,9 @@ enum class UserRole {
     OWNER,
     RENTER;
 
+    fun includes(requiredRole: UserRole): Boolean =
+        this == requiredRole || this == OWNER && requiredRole == RENTER
+
     companion object {
         private val legacyValues = mapOf(
             "AANBIEDER" to OWNER,

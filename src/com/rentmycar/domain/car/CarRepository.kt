@@ -6,6 +6,7 @@ import com.rentmycar.domain.car.dto.CarDto
 import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.location.Location
 import com.rentmycar.domain.user.User
+import java.util.Locale
 
 class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     override fun toDto(entity: Car): CarDto = entity.toDto()
@@ -21,7 +22,7 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                 owner = User[car.ownerId]
                 brand = car.brand
                 type = car.type
-                licensePlate = car.licensePlate
+                licensePlate = car.licensePlate.trim().uppercase(Locale.ROOT)
                 pricePerHour = car.pricePerHour
                 pickup = pickupLocation
                 dropOff = dropOffLocation

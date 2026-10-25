@@ -38,9 +38,9 @@ class AuthorizationService(private val userRepository: IUserRepository) {
     fun canCalculateCost(role: UserRole): Boolean = role == UserRole.OWNER
 
     /**
-     * Checks if the user is authorized to reserve cars (renter only).
+     * Checks if the user is authorized to reserve cars.
      */
-    fun canReserveCar(role: UserRole): Boolean = role == UserRole.RENTER
+    fun canReserveCar(role: UserRole): Boolean = role.includes(UserRole.RENTER)
 
     /**
      * Checks if the user can manage or cancel a reservation.
@@ -49,6 +49,6 @@ class AuthorizationService(private val userRepository: IUserRepository) {
     fun canManageReservation(userId: Long, role: UserRole, renterId: Long, carOwnerId: Long): Boolean =
         when (role) {
             UserRole.RENTER -> userId == renterId
-            UserRole.OWNER -> userId == carOwnerId
+            UserRole.OWNER -> userId == renterId || userId == carOwnerId
         }
 }

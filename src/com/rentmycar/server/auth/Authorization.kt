@@ -34,7 +34,7 @@ val RoleAuthorizationPlugin = createRouteScopedPlugin(
         }
 
         val userRole = call.authenticatedUserRole()
-        if (userRole == null || userRole !in allowedRoles) {
+        if (userRole == null || allowedRoles.none { userRole.includes(it) }) {
             call.respond(HttpStatusCode.Forbidden, "Access denied: insufficient permissions")
         }
     }

@@ -414,7 +414,7 @@ class AuthorizationTest {
 
         // Reservation permissions
         assertTrue(authService.canReserveCar(UserRole.RENTER))
-        assertFalse(authService.canReserveCar(UserRole.OWNER))
+        assertTrue(authService.canReserveCar(UserRole.OWNER))
     }
 }
 

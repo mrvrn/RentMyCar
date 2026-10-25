@@ -1,2 +1,0 @@
-ALTER TABLE cars
-    CHANGE COLUMN pricePerDay pricePerHour DECIMAL(10, 2) NOT NULL;
