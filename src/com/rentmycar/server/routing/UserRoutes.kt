@@ -9,6 +9,8 @@ import com.rentmycar.domain.user.UserRole
 import com.rentmycar.domain.user.dto.LoginUserDto
 import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.RegisterUserRequest
+import com.rentmycar.server.auth.authenticatedUserId
+import com.rentmycar.server.auth.authorize
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.plugins.BadRequestException
@@ -24,6 +26,18 @@ fun Route.userRoutes(repository: IUserRepository) {
     val issuer = jwtConfig.property("jwt.issuer").getString()
     val audience = jwtConfig
         .property("jwt.audience").getString()
+
+    authorize(UserRole.RENTER) {
+        get("/users/{id}") {
+            val id = call.parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
+            if (call.authenticatedUserId() != id) {
+                return@get call.respond(HttpStatusCode.Forbidden, "Access denied")
+            }
+            val user = call.userOrRespond(repository) ?: return@get
+            call.respond(user)
+        }
+    }
 
     route("/register") {
         post {
@@ -70,8 +84,7 @@ fun Route.userRoutes(repository: IUserRepository) {
                 // Self-registration always creates a renter; an owner role is never client-assignable.
                 repository.create(createUser, UserRole.RENTER)
             } catch (_: DuplicateEmailException) {
-                // Vanuit een security stand point is dit bad practice. In echte omgevingen dit niet doen:
-                call.respond(HttpStatusCode.Conflict, "Email already in use")
+                // Send the same acknowledgement without changing the existing account.
             }
             call.respond(HttpStatusCode.OK, "Registration request processed.")
         }

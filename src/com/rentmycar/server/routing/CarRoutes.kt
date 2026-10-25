@@ -3,6 +3,7 @@ package com.rentmycar.server.routing
 import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.car.dto.UpdateCarDto
 import com.rentmycar.domain.car.DuplicateLicensePlateException
+import com.rentmycar.domain.car.CarHasRentalsException
 import com.rentmycar.domain.car.ICarRepository
 import com.rentmycar.domain.rental.dto.CreateRentalDto
 import com.rentmycar.domain.rental.IRentalRepository
@@ -122,7 +123,11 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
                 if (existing.ownerId != ownerId) {
                     return@delete call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Geen toegang tot deze auto"))
                 }
-                call.respond(if (repository.delete(existing.id)) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+                try {
+                    call.respond(if (repository.delete(existing.id)) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+                } catch (exception: CarHasRentalsException) {
+                    call.respond(HttpStatusCode.Conflict, mapOf("error" to exception.message.orEmpty()))
+                }
             }
         }
     }

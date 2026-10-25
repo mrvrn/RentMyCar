@@ -5,6 +5,10 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.rentmycar.database.DatabaseSettings
 import com.rentmycar.database.migrateDatabase
 import com.rentmycar.domain.car.CarRepository
+import com.rentmycar.domain.car.Car
+import com.rentmycar.domain.rental.Rental
+import com.rentmycar.domain.rental.RentalStatus
+import kotlinx.datetime.LocalDateTime
 import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.car.dto.UpdateCarDto
 import com.rentmycar.domain.location.Location
@@ -118,6 +122,38 @@ class CarCrudTest {
     fun getCarsReturnsOk() = carTest {
         val response = client.get("/cars")
         assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun `deleting cars with rentals returns conflict and preserves history for every status`() = carTest {
+        for (rentalStatus in RentalStatus.entries) {
+            val created = postCar(carJson("DEL-${rentalStatus.name}"))
+            assertEquals(HttpStatusCode.Created, created.status)
+            val carId = Json.parseToJsonElement(created.bodyAsText()).jsonObject.getValue("id").jsonPrimitive.long
+            val rentalId = transaction {
+                Rental.new {
+                    car = Car[carId]
+                    renter = User[otherUserId]
+                    startAt = LocalDateTime.parse("2100-11-01T10:00:00")
+                    endAt = LocalDateTime.parse("2100-11-01T11:00:00")
+                    status = rentalStatus
+                    totalPrice = "10.00".toBigDecimal()
+                    cancelledAt = if (rentalStatus == RentalStatus.CANCELLED) {
+                        LocalDateTime.parse("2026-10-25T10:00:00")
+                    } else null
+                }.id.value
+            }
+
+            val response = client.delete("/cars/$carId") { bearerAuth(token(testUserId)) }
+            assertEquals(HttpStatusCode.Conflict, response.status, "Rental status: $rentalStatus")
+            assertEquals("Car has associated rentals and cannot be deleted",
+                Json.parseToJsonElement(response.bodyAsText()).jsonObject.getValue("error").jsonPrimitive.content)
+            assertEquals(HttpStatusCode.OK, client.get("/cars/$carId").status)
+            transaction {
+                assertEquals(rentalStatus, Rental[rentalId].status)
+                assertEquals(carId, Rental[rentalId].car.id.value)
+            }
+        }
     }
 
     @Test

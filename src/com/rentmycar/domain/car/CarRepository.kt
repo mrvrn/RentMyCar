@@ -14,6 +14,19 @@ import java.util.Locale
 class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     override fun toDto(entity: Car): CarDto = entity.toDto()
 
+    override suspend fun delete(id: Long): Boolean {
+        try {
+            return super.delete(id)
+        } catch (exception: SQLException) {
+            // The database constraint also protects history when a booking races with deletion.
+            if (generateSequence<Throwable>(exception) { it.cause }
+                    .filterIsInstance<SQLException>().any { it.errorCode == 1451 }) {
+                throw CarHasRentalsException(exception)
+            }
+            throw exception
+        }
+    }
+
     override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto {
         require(car.pricePerHour.signum() >= 0) { "Hourly rate must not be negative" }
         try {
