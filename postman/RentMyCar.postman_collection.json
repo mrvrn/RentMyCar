@@ -32,12 +32,12 @@
     },
     {
       "key": "ownerEmail",
-      "value": "",
+      "value": "owner@example.com",
       "type": "string"
     },
     {
       "key": "ownerPassword",
-      "value": "",
+      "value": "Owner12345",
       "type": "string"
     },
     {
@@ -333,7 +333,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "const start = new Date(Date.now() + 7 * 86400000);",
+              "const dayOffset = 7 + Math.floor(Math.random() * 365);",
+              "const start = new Date(Date.now() + dayOffset * 86400000);",
               "start.setUTCHours(10, 0, 0, 0);",
               "pm.collectionVariables.set('startAt', start.toISOString().slice(0, 19));",
               "pm.collectionVariables.set('endAt', new Date(start.getTime() + 7200000).toISOString().slice(0, 19));",
@@ -6628,7 +6629,7 @@
       ]
     },
     {
-      "name": "163 Create validation fixture car",
+      "name": "164 Create validation fixture car",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6675,7 +6676,7 @@
       ]
     },
     {
-      "name": "164 Reject car create with oversized brand",
+      "name": "165 Reject car create with oversized brand",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6719,7 +6720,7 @@
       ]
     },
     {
-      "name": "165 Reject car update with oversized brand",
+      "name": "166 Reject car update with oversized brand",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6763,7 +6764,7 @@
       ]
     },
     {
-      "name": "166 Reject car create with oversized type",
+      "name": "167 Reject car create with oversized type",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6807,7 +6808,7 @@
       ]
     },
     {
-      "name": "167 Reject car update with oversized type",
+      "name": "168 Reject car update with oversized type",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6851,7 +6852,7 @@
       ]
     },
     {
-      "name": "168 Reject car create with oversized plate",
+      "name": "169 Reject car create with oversized plate",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6895,7 +6896,7 @@
       ]
     },
     {
-      "name": "169 Reject car update with oversized plate",
+      "name": "170 Reject car update with oversized plate",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -6939,7 +6940,7 @@
       ]
     },
     {
-      "name": "170 Reject car create with plate exceeding limit after uppercasing",
+      "name": "171 Reject car create with plate exceeding limit after uppercasing",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -6983,7 +6984,7 @@
       ]
     },
     {
-      "name": "171 Reject car update with plate exceeding limit after uppercasing",
+      "name": "172 Reject car update with plate exceeding limit after uppercasing",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7027,7 +7028,7 @@
       ]
     },
     {
-      "name": "172 Reject car create with invalid plate syntax",
+      "name": "173 Reject car create with invalid plate syntax",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7071,7 +7072,7 @@
       ]
     },
     {
-      "name": "173 Reject car update with invalid plate syntax",
+      "name": "174 Reject car update with invalid plate syntax",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7115,7 +7116,7 @@
       ]
     },
     {
-      "name": "174 Reject car create with control character in brand",
+      "name": "175 Reject car create with control character in brand",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7159,7 +7160,7 @@
       ]
     },
     {
-      "name": "175 Reject car update with control character in brand",
+      "name": "176 Reject car update with control character in brand",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7203,7 +7204,7 @@
       ]
     },
     {
-      "name": "176 Reject car create with zero pickup ID",
+      "name": "177 Reject car create with zero pickup ID",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7247,7 +7248,7 @@
       ]
     },
     {
-      "name": "177 Reject car update with zero pickup ID",
+      "name": "178 Reject car update with zero pickup ID",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7291,7 +7292,7 @@
       ]
     },
     {
-      "name": "178 Reject car create with negative drop-off ID",
+      "name": "179 Reject car create with negative drop-off ID",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7335,7 +7336,7 @@
       ]
     },
     {
-      "name": "179 Reject car update with negative drop-off ID",
+      "name": "180 Reject car update with negative drop-off ID",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7379,7 +7380,7 @@
       ]
     },
     {
-      "name": "180 Reject car create with too many pictures",
+      "name": "181 Reject car create with too many pictures",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7423,7 +7424,7 @@
       ]
     },
     {
-      "name": "181 Reject car update with too many pictures",
+      "name": "182 Reject car update with too many pictures",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7467,7 +7468,7 @@
       ]
     },
     {
-      "name": "182 Reject car create with oversized picture URL",
+      "name": "183 Reject car create with oversized picture URL",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7511,7 +7512,7 @@
       ]
     },
     {
-      "name": "183 Reject car update with oversized picture URL",
+      "name": "184 Reject car update with oversized picture URL",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7555,7 +7556,7 @@
       ]
     },
     {
-      "name": "184 Reject car create with blank picture URL",
+      "name": "185 Reject car create with blank picture URL",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7599,7 +7600,7 @@
       ]
     },
     {
-      "name": "185 Reject car update with blank picture URL",
+      "name": "186 Reject car update with blank picture URL",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7643,7 +7644,7 @@
       ]
     },
     {
-      "name": "186 Reject car create with relative picture URL",
+      "name": "187 Reject car create with relative picture URL",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7687,7 +7688,7 @@
       ]
     },
     {
-      "name": "187 Reject car update with relative picture URL",
+      "name": "188 Reject car update with relative picture URL",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7731,7 +7732,7 @@
       ]
     },
     {
-      "name": "188 Reject car create with unsupported picture scheme",
+      "name": "189 Reject car create with unsupported picture scheme",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7775,7 +7776,7 @@
       ]
     },
     {
-      "name": "189 Reject car update with unsupported picture scheme",
+      "name": "190 Reject car update with unsupported picture scheme",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7819,7 +7820,7 @@
       ]
     },
     {
-      "name": "190 Reject car create with picture URL without host",
+      "name": "191 Reject car create with picture URL without host",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7863,7 +7864,7 @@
       ]
     },
     {
-      "name": "191 Reject car update with picture URL without host",
+      "name": "192 Reject car update with picture URL without host",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7907,7 +7908,7 @@
       ]
     },
     {
-      "name": "192 Reject car create with picture URL with credentials",
+      "name": "193 Reject car create with picture URL with credentials",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -7951,7 +7952,7 @@
       ]
     },
     {
-      "name": "193 Reject car update with picture URL with credentials",
+      "name": "194 Reject car update with picture URL with credentials",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -7995,7 +7996,7 @@
       ]
     },
     {
-      "name": "194 Reject car create with picture URL with invalid port",
+      "name": "195 Reject car create with picture URL with invalid port",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/cars",
@@ -8039,7 +8040,7 @@
       ]
     },
     {
-      "name": "195 Reject car update with picture URL with invalid port",
+      "name": "196 Reject car update with picture URL with invalid port",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -8083,7 +8084,7 @@
       ]
     },
     {
-      "name": "196 Validation failures leave car unchanged",
+      "name": "197 Validation failures leave car unchanged",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -8107,7 +8108,7 @@
       ]
     },
     {
-      "name": "197 Accept maximum text and picture limits",
+      "name": "198 Accept maximum text and picture limits",
       "request": {
         "method": "PUT",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -8151,7 +8152,7 @@
       ]
     },
     {
-      "name": "198 Boundary values survive database round trip",
+      "name": "199 Boundary values survive database round trip",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -8180,7 +8181,7 @@
       ]
     },
     {
-      "name": "199 Delete validation fixture car",
+      "name": "200 Delete validation fixture car",
       "request": {
         "method": "DELETE",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -8210,7 +8211,7 @@
       ]
     },
     {
-      "name": "200 Deleted validation fixture is absent",
+      "name": "201 Deleted validation fixture is absent",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/cars/{{validationCarId}}",
@@ -8233,7 +8234,7 @@
       ]
     },
     {
-      "name": "201 Reject registration with phone containing letters",
+      "name": "202 Reject registration with phone containing letters",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8270,7 +8271,7 @@
       ]
     },
     {
-      "name": "202 Reject registration with short phone",
+      "name": "203 Reject registration with short phone",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8307,7 +8308,7 @@
       ]
     },
     {
-      "name": "203 Reject registration with long phone",
+      "name": "204 Reject registration with long phone",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8344,7 +8345,7 @@
       ]
     },
     {
-      "name": "204 Reject registration with multiple phone plus signs",
+      "name": "205 Reject registration with multiple phone plus signs",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8381,7 +8382,7 @@
       ]
     },
     {
-      "name": "205 Reject registration with unbalanced phone parentheses",
+      "name": "206 Reject registration with unbalanced phone parentheses",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8418,7 +8419,7 @@
       ]
     },
     {
-      "name": "206 Reject registration with contact control character",
+      "name": "207 Reject registration with contact control character",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",
@@ -8455,7 +8456,7 @@
       ]
     },
     {
-      "name": "207 Register formatted international phone",
+      "name": "208 Register formatted international phone",
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/register",

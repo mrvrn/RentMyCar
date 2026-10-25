@@ -9,7 +9,8 @@ The following are demo-only values, loaded when `DEMO_SEED=true`: owner
 `owner@example.com` / `Owner12345`, renter one `renter1@example.com` /
 `Renter12345`, and renter two `renter2@example.com` / `Renter12345`. Select one
 of the seeded `DEMO-001-A` through `DEMO-006-A` cars for `carId`; use the owner
-credentials above for `ownerEmail` and `ownerPassword`.
+credentials above for `ownerEmail` and `ownerPassword`. The collection defaults
+to the demo owner values; override them for a non-demo environment.
 
 To create a car fixture, log in through `POST /login` with an existing `OWNER` account and send `POST /cars` with its JWT as a Bearer token and `Content-Type: application/json`:
 
@@ -27,7 +28,7 @@ To create a car fixture, log in through `POST /login` with an existing `OWNER` a
 
 Replace `pickupId` and `dropOffId` with existing location IDs and use a unique license plate. Set `isAvailable` to `true`; it defaults to `false` when omitted. Set the collection's `carId` to the `id` in the `201 Created` response and use that owner's credentials for `ownerEmail` and `ownerPassword`. Direct database seeding of the owner, locations, and car remains an alternative for development fixtures.
 
-Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses `POST /cars/{{carId}}/rental` with that token and generates a 10:00–12:00 Amsterdam local-time period on the UTC calendar date seven days ahead, avoiding daylight-saving transition hours. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`. All creation and rebooking requests use this car route.
+Registration generates a unique email. Login automatically saves the JWT into `token`. Create rental uses `POST /cars/{{carId}}/rental` with that token and generates a 10:00–12:00 Amsterdam local-time period on a randomly selected UTC calendar date 7–371 days ahead, avoiding daylight-saving transition hours and collisions with earlier runs. Both the URL and body use the same `carId`. Dates have no timezone suffix, as required by the API. The response ID is saved as `rentalId`. All creation and rebooking requests use this car route.
 
 Valid registration requests receive the same `200 OK` acknowledgement for new and existing email addresses. Request 08 checks this generic duplicate-registration response; it does not indicate whether an account was created. Existing accounts are not modified.
 

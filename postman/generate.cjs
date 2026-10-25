@@ -49,7 +49,7 @@ const optionalCancellation = (variable, status) => ({
 });
 const collection = {
   info: { name: 'RentMyCar API tests', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json', description: 'Run in order. Requires an existing available car. Creates persistent users and rentals. See the accompanying README.' },
-  variable: Object.entries({ baseUrl: 'http://localhost:8080', carId: '1', email: '', password: 'PostmanTest123!', token: '', ownerEmail: '', ownerPassword: '', ownerToken: '', startAt: '', endAt: '', rentalId: '', rejectedRentalId: '', cancelledAt: '', activeRentalId: '', completedRentalId: '', userId: '', strangerEmail: '', strangerToken: '', invalidToken: 'invalid.jwt.token', pricePerHourCents: '', unavailableCarId: '' }).map(([key, value]) => ({ key, value, type: 'string' })),
+  variable: Object.entries({ baseUrl: 'http://localhost:8080', carId: '1', email: '', password: 'PostmanTest123!', token: '', ownerEmail: 'owner@example.com', ownerPassword: 'Owner12345', ownerToken: '', startAt: '', endAt: '', rentalId: '', rejectedRentalId: '', cancelledAt: '', activeRentalId: '', completedRentalId: '', userId: '', strangerEmail: '', strangerToken: '', invalidToken: 'invalid.jwt.token', pricePerHourCents: '', unavailableCarId: '' }).map(([key, value]) => ({ key, value, type: 'string' })),
   item: [
     request('01 Register a new user', '/register', user, 200, { pre: `pm.collectionVariables.set('email', 'postman.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');
 pm.collectionVariables.unset('token');
@@ -80,7 +80,8 @@ pm.collectionVariables.unset('cancelledAt');` }),
   pm.test('Hourly price is valid', () => pm.expect(data.pricePerHour).to.be.a('number').and.at.least(0));
   pm.collectionVariables.set('pricePerHourCents', Math.round(data.pricePerHour * 100));
 }` }),
-    request('04 Create rental through car route', createUrl, rental, 201, { auth: true, pre: `const start = new Date(Date.now() + 7 * 86400000);
+    request('04 Create rental through car route', createUrl, rental, 201, { auth: true, pre: `const dayOffset = 7 + Math.floor(Math.random() * 365);
+const start = new Date(Date.now() + dayOffset * 86400000);
 start.setUTCHours(10, 0, 0, 0);
 pm.collectionVariables.set('startAt', start.toISOString().slice(0, 19));
 pm.collectionVariables.set('endAt', new Date(start.getTime() + 7200000).toISOString().slice(0, 19));
