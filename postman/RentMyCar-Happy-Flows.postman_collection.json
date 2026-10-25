@@ -1,0 +1,1032 @@
+{
+  "info": {
+    "name": "RentMyCar — Owner and renter happy flows",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run folders 01–04 in order with Collection Runner (one iteration). Owner creates and publishes a car; a new renter books it; owner confirms; renter sees confirmation. Run setup-happy-flow.ps1 once and import its local environment, or supply an existing OWNER and location IDs. Public registration only creates RENTERS. Folder 05 is optional and skips unless cancelAfterFlow=true. Each run creates persistent fixtures. See HAPPY-FLOWS.md."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "ownerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ownerPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pickupId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dropOffId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "renterEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "renterPassword",
+      "value": "PostmanHappy123!",
+      "type": "string"
+    },
+    {
+      "key": "ownerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "renterToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ownerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "renterId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "carId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rentalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "licensePlate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "startAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "endAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cancelAfterFlow",
+      "value": "false",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Owner flow — create a car and allow rentals",
+      "description": "Requires an OWNER account and existing location IDs. Setup script provisions both locally. This stage creates a car with availability off, then publishes it.",
+      "item": [
+        {
+          "name": "Log in as owner and save ownerToken",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "for (const key of ['ownerEmail', 'ownerPassword', 'pickupId', 'dropOffId']) {",
+                  "  if (!pm.variables.get(key)) {",
+                  "    pm.execution.setNextRequest(null);",
+                  "    throw new Error('Missing ' + key + ': run setup-happy-flow.ps1 and import the generated environment, or set owner credentials and location IDs.');",
+                  "  }",
+                  "}",
+                  "for (const key of ['ownerToken', 'renterToken', 'ownerId', 'renterId', 'carId', 'rentalId', 'renterEmail', 'licensePlate', 'startAt', 'endAt']) pm.collectionVariables.unset(key);",
+                  "pm.collectionVariables.set('licensePlate', 'HAPPY-' + pm.variables.replaceIn('{{$guid}}').replace(/-/g, '').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('OWNER role', () => pm.expect(data.role).to.eql('OWNER'));",
+                  "pm.test('JWT returned', () => pm.expect(data.token).to.be.a('string').and.match(/^[^.]+\\.[^.]+\\.[^.]+$/));",
+                  "if (data.role !== 'OWNER') {",
+                  "  console.error('Owner setup is required: run setup-happy-flow.ps1 and import its environment before running.');",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "  const payload = JSON.parse(require('buffer').Buffer.from(data.token.split('.')[1], 'base64').toString());",
+                  "  pm.collectionVariables.set('ownerToken', data.token);",
+                  "  pm.collectionVariables.set('ownerId', payload.userId);",
+                  "}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check owner profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{ownerId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "",
+                  "const data = pm.response.json();",
+                  "pm.test('Owner identity and role', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('ownerId')));",
+                  "  pm.expect(data.role).to.eql('OWNER');",
+                  "  pm.expect(data).not.to.have.property('password');",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a car — not yet available",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/cars",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Toyota\",\n  \"type\": \"Yaris\",\n  \"licensePlate\": \"{{licensePlate}}\",\n  \"pricePerHour\": 12.5,\n  \"pickupId\": {{pickupId}},\n  \"dropOffId\": {{dropOffId}},\n  \"pictures\": [],\n  \"isAvailable\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code !== 201) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Car created for this owner, availability off', () => {",
+                  "  pm.expect(data.id).to.be.a('number').and.above(0);",
+                  "  pm.expect(data.ownerId).to.eql(Number(pm.collectionVariables.get('ownerId')));",
+                  "  pm.expect(data.licensePlate).to.eql(pm.collectionVariables.get('licensePlate'));",
+                  "  pm.expect(data.pricePerHour).to.eql(12.5);",
+                  "  pm.expect(data.isAvailable).to.eql(false);",
+                  "});",
+                  "pm.collectionVariables.set('carId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Allow the car to be rented",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/cars/{{carId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isAvailable\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Correct car is available', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(data.isAvailable).to.eql(true);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Renter flow — create account, log in and reserve",
+      "item": [
+        {
+          "name": "Register a new renter",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/register",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Happy Flow Renter\",\n  \"email\": \"{{renterEmail}}\",\n  \"phone\": \"+31612345678\",\n  \"address\": \"Teststraat 2, Amsterdam\",\n  \"password\": \"{{renterPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('renterEmail', 'happy.renter.' + pm.variables.replaceIn('{{$guid}}') + '@example.com');",
+                  "pm.collectionVariables.unset('renterToken');",
+                  "pm.collectionVariables.unset('renterId');",
+                  "pm.collectionVariables.unset('rentalId');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "pm.test('Registration acknowledged', () => pm.expect(pm.response.text()).to.eql('Registration request processed.'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in as renter and save renterToken",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{renterEmail}}\",\n  \"password\": \"{{renterPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.unset('renterToken');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('RENTER role', () => pm.expect(data.role).to.eql('RENTER'));",
+                  "pm.test('JWT returned', () => pm.expect(data.token).to.be.a('string').and.match(/^[^.]+\\.[^.]+\\.[^.]+$/));",
+                  "if (data.role !== 'RENTER') {",
+                  "  console.error('Owner setup is required: run setup-happy-flow.ps1 and import its environment before running.');",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "  const payload = JSON.parse(require('buffer').Buffer.from(data.token.split('.')[1], 'base64').toString());",
+                  "  pm.collectionVariables.set('renterToken', data.token);",
+                  "  pm.collectionVariables.set('renterId', payload.userId);",
+                  "}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check renter profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{renterId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{renterToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "",
+                  "const data = pm.response.json();",
+                  "pm.test('Renter identity and role', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('renterId')));",
+                  "  pm.expect(data.role).to.eql('RENTER');",
+                  "  pm.expect(data).not.to.have.property('password');",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Browse cars and find the published car",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/cars",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "",
+                  "pm.test('Published car is listed', () => {",
+                  "  const car = pm.response.json().find(car => car.id === Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(car).to.be.an('object');",
+                  "  pm.expect(car.isAvailable).to.eql(true);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View the car before booking",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/cars/{{carId}}",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "",
+                  "const data = pm.response.json();",
+                  "pm.test('Available car costs 12.50 per hour', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(data.isAvailable).to.eql(true);",
+                  "  pm.expect(data.pricePerHour).to.eql(12.5);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reserve the car for two hours",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/cars/{{carId}}/rental",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{renterToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carId\": {{carId}},\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const day = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('startAt', day + 'T10:00:00');",
+                  "pm.collectionVariables.set('endAt', day + 'T12:00:00');",
+                  "pm.collectionVariables.unset('rentalId');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code !== 201) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Pending rental for this renter and car, total 25.00', () => {",
+                  "  pm.expect(data.id).to.be.a('number').and.above(0);",
+                  "  pm.expect(data.status).to.eql('PENDING');",
+                  "  pm.expect(data.carId).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(data.renterId).to.eql(Number(pm.collectionVariables.get('renterId')));",
+                  "  pm.expect(Number(data.totalPrice)).to.eql(25);",
+                  "  pm.expect(data.startAt.slice(0, 16)).to.eql(pm.collectionVariables.get('startAt').slice(0, 16));",
+                  "  pm.expect(data.endAt.slice(0, 16)).to.eql(pm.collectionVariables.get('endAt').slice(0, 16));",
+                  "});",
+                  "pm.collectionVariables.set('rentalId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View pending reservation as renter",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rentals/{{rentalId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{renterToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Correct reservation, car, renter and status', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('rentalId')));",
+                  "  pm.expect(data.car.id).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(data.renterId).to.eql(Number(pm.collectionVariables.get('renterId')));",
+                  "  pm.expect(data.status).to.eql('PENDING');",
+                  "  pm.expect(Number(data.totalPrice)).to.eql(25);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Owner flow — approve the reservation",
+      "description": "The owner checks the reservation by its saved ID, then confirms it. GET /rentals returns personal renter bookings, not incoming owner requests.",
+      "item": [
+        {
+          "name": "Log in as owner and save ownerToken",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.unset('ownerToken');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('OWNER role', () => pm.expect(data.role).to.eql('OWNER'));",
+                  "pm.test('JWT returned', () => pm.expect(data.token).to.be.a('string').and.match(/^[^.]+\\.[^.]+\\.[^.]+$/));",
+                  "if (data.role !== 'OWNER') {",
+                  "  console.error('Owner setup is required: run setup-happy-flow.ps1 and import its environment before running.');",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "  const payload = JSON.parse(require('buffer').Buffer.from(data.token.split('.')[1], 'base64').toString());",
+                  "  pm.collectionVariables.set('ownerToken', data.token);",
+                  "  pm.collectionVariables.set('ownerId', payload.userId);",
+                  "}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View pending reservation as owner",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rentals/{{rentalId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Correct reservation, car, renter and status', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('rentalId')));",
+                  "  pm.expect(data.car.id).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(data.renterId).to.eql(Number(pm.collectionVariables.get('renterId')));",
+                  "  pm.expect(data.status).to.eql('PENDING');",
+                  "  pm.expect(Number(data.totalPrice)).to.eql(25);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve the reservation",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/rentals/{{rentalId}}/status",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Reservation confirmed for the correct renter and car', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('rentalId')));",
+                  "  pm.expect(data.carId).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(data.renterId).to.eql(Number(pm.collectionVariables.get('renterId')));",
+                  "  pm.expect(data.status).to.eql('CONFIRMED');",
+                  "  pm.expect(Number(data.totalPrice)).to.eql(25);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Renter flow — see the confirmed booking",
+      "item": [
+        {
+          "name": "Log in as renter and save renterToken",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{renterEmail}}\",\n  \"password\": \"{{renterPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.unset('renterToken');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('RENTER role', () => pm.expect(data.role).to.eql('RENTER'));",
+                  "pm.test('JWT returned', () => pm.expect(data.token).to.be.a('string').and.match(/^[^.]+\\.[^.]+\\.[^.]+$/));",
+                  "if (data.role !== 'RENTER') {",
+                  "  console.error('Owner setup is required: run setup-happy-flow.ps1 and import its environment before running.');",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "  const payload = JSON.parse(require('buffer').Buffer.from(data.token.split('.')[1], 'base64').toString());",
+                  "  pm.collectionVariables.set('renterToken', data.token);",
+                  "  pm.collectionVariables.set('renterId', payload.userId);",
+                  "}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View confirmed reservation as renter",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rentals/{{rentalId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{renterToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Correct reservation, car, renter and status', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('rentalId')));",
+                  "  pm.expect(data.car.id).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(data.renterId).to.eql(Number(pm.collectionVariables.get('renterId')));",
+                  "  pm.expect(data.status).to.eql('CONFIRMED');",
+                  "  pm.expect(Number(data.totalPrice)).to.eql(25);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Find the confirmed booking in my rentals",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rentals",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{renterToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "",
+                  "pm.test('My list includes this confirmed reservation', () => {",
+                  "  const rental = pm.response.json().find(rental => rental.id === Number(pm.collectionVariables.get('rentalId')));",
+                  "  pm.expect(rental).to.be.an('object');",
+                  "  pm.expect(rental.car.id).to.eql(Number(pm.collectionVariables.get('carId')));",
+                  "  pm.expect(rental.status).to.eql('CONFIRMED');",
+                  "  pm.expect(Number(rental.totalPrice)).to.eql(25);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Optional renter flow — cancel the booking",
+      "description": "Skipped by default. Set cancelAfterFlow=true to finish with a cancelled booking instead of a confirmed one.",
+      "item": [
+        {
+          "name": "Cancel the confirmed booking (optional)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/rentals/{{rentalId}}/cancel",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{renterToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (String(pm.variables.get('cancelAfterFlow')).toLowerCase() !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code !== 200) {",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "const data = pm.response.json();",
+                  "pm.test('Reservation cancelled with timestamp', () => {",
+                  "  pm.expect(data.id).to.eql(Number(pm.collectionVariables.get('rentalId')));",
+                  "  pm.expect(data.status).to.eql('CANCELLED');",
+                  "  pm.expect(data.cancelledAt).to.be.a('string').and.not.empty;",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

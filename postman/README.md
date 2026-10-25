@@ -1,5 +1,7 @@
 # RentMyCar Postman suite
 
+For a shorter owner/renter walkthrough, use the separate [happy-flow collection and setup guide](HAPPY-FLOWS.md).
+
 1. Start the database and Ktor application (see [local setup](../docs/docker.md)). The application requires `JWT_SECRET` and defaults to port 8080.
 2. Import `RentMyCar.postman_collection.json` into Postman.
 3. Set the collection variables `baseUrl`, `carId`, `ownerEmail`, and `ownerPassword`. The owner credentials must belong to the owner of the selected car. Choose an existing available car with no booking during the test period, or create one using the fixture setup below.
