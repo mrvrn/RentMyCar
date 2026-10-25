@@ -14,6 +14,7 @@
 
 # Local Docker configuration
 /.env
+/postman/*.local.postman_environment.json
 
 # Local Postman configuration
 /postman/postman.local.environment.json
