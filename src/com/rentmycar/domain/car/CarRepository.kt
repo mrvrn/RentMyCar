@@ -28,7 +28,12 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     }
 
     override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto {
-        if (car.pricePerHour.signum() < 0) invalidCar("Hourly rate must not be negative")
+        val validated = CarValidation.normalizeAndValidate(car)
+        require(ownerId > 0) { "Owner ID must be positive" }
+        return createValidated(validated, ownerId)
+    }
+
+    private suspend fun createValidated(car: CreateCarDto, ownerId: Long): CarDto {
         try {
             return withTransaction {
                 val normalizedPlate = car.licensePlate.trim().uppercase(Locale.ROOT)
@@ -67,10 +72,13 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
         }
     }
 
-    /** Stops car validation immediately when the input cannot be persisted safely. */
-    private fun invalidCar(message: String): Nothing = throw IllegalArgumentException(message)
-
     override suspend fun update(id: Long, car: UpdateCarDto): CarDto? {
+        val validated = CarValidation.normalizeAndValidate(car)
+        require(id > 0) { "Car ID must be positive" }
+        return updateValidated(id, validated)
+    }
+
+    private suspend fun updateValidated(id: Long, car: UpdateCarDto): CarDto? {
         try {
             return withTransaction {
                 val existing = Car.findById(id) ?: return@withTransaction null

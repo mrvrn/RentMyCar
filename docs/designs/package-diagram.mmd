@@ -1,0 +1,74 @@
+%%{init: {"look":"neo","theme":"base","themeVariables":{"background":"#111111","primaryColor":"#111111","primaryTextColor":"#ffffff","primaryBorderColor":"#ffffff","lineColor":"#ffffff","clusterBkg":"#111111","clusterBorder":"#ffffff","titleColor":"#ffffff","edgeLabelBackground":"#111111","fontFamily":"Arial"},"flowchart":{"curve":"linear","nodeSpacing":35,"rankSpacing":55,"wrappingWidth":1900}}}%%
+flowchart TB
+    subgraph canvas[" "]
+    direction TB
+    subgraph drawing[" "]
+    subgraph root["com.rentmycar"]
+        direction RL
+        subgraph domain["domain"]
+            direction RL
+            subgraph car["car"]
+                car_dto["dto"]
+            end
+            subgraph rental["rental"]
+                rental_dto["dto"]
+            end
+            subgraph user["user"]
+                user_dto["dto"]
+            end
+            trip["trip"]
+            location["location"]
+            domain_auth["auth"]
+            base["base"]
+        end
+        subgraph server["server"]
+            direction LR
+            server_auth["auth"]
+            routing["routing"]
+            serialization["serialization"]
+        end
+        database["database"]
+    end
+
+    end
+    %% Package-level overview. Expanded import graph: package-dependencies.mmd.
+    %% A -.-> B means A depends on B; nested DTO imports are summarized here.
+    server -.-> domain
+    routing -.-> server_auth
+    car -.-> rental
+    rental -.-> car
+    car -.-> user
+    user -.-> car
+    rental -.-> user
+    user -.-> rental
+    car -.-> location
+    location -.-> user
+    user -.-> location
+    domain_auth -.-> user
+    user -.-> domain_auth
+    car -.-> base
+    rental -.-> base
+    user -.-> base
+    domain -.-> database
+    database -.-> domain
+    %% Planned relationships retained from the original design.
+    trip -.-> user
+    trip -.-> rental
+
+    classDef package fill:#111111,stroke:#ffffff,color:#ffffff,stroke-width:1px;
+    class trip,car_dto,rental_dto,user_dto,location,domain_auth,base,server_auth,routing,serialization,database package;
+    style root fill:#111111,stroke:#ffffff,color:#ffffff
+    style domain fill:#111111,stroke:#ffffff,color:#ffffff
+    style server fill:#111111,stroke:#ffffff,color:#ffffff
+    style car fill:#111111,stroke:#ffffff,color:#ffffff
+    style rental fill:#111111,stroke:#ffffff,color:#ffffff
+    style user fill:#111111,stroke:#ffffff,color:#ffffff
+    linkStyle default stroke:#ffffff,stroke-width:1px;
+
+
+    caption@{shape: text, label: "In de desbetreffende packages binnen de package domain komen alle classes, services,<br/>repositories, dto's, database modellen en dergelijke te staan."}
+    drawing ~~~ caption
+    style drawing fill:transparent,stroke:transparent
+    style caption fill:#111111,stroke:transparent,color:#ffffff,font-size:40px,font-weight:bold
+    end
+    style canvas fill:#111111,stroke:transparent

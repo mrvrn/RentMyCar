@@ -8,6 +8,11 @@ import com.rentmycar.domain.user.UserRepository
 import com.rentmycar.domain.user.DuplicateEmailException
 import com.rentmycar.domain.user.dto.CreateUserDto
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.mysql.MySQLContainer
 import kotlin.test.Test
@@ -17,8 +22,40 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertIs
 
 class UserRepositoryTest {
+    @Test
+    fun `concurrent registration stores one account and preserves its credentials`() = runBlocking {
+        MySQLContainer("mysql:8.1").use { mysql ->
+            mysql.start()
+            val settings = DatabaseSettings(mysql.jdbcUrl, mysql.username, mysql.password)
+            migrateDatabase(settings)
+            val database = settings.connect()
+            val repository = UserRepository()
+            val gate = CompletableDeferred<Unit>()
+            val inputs = listOf("First", "Second").map {
+                CreateUserDto(it, "race@example.com", "0612345678", "Street 1", "$it-password-123")
+            }
+            val outcomes = coroutineScope {
+                val attempts = inputs.map { input ->
+                    async(Dispatchers.IO) { gate.await(); runCatching { repository.create(input) } }
+                }
+                gate.complete(Unit)
+                attempts.awaitAll()
+            }
+            assertEquals(1, outcomes.count { it.isSuccess })
+            assertIs<DuplicateEmailException>(outcomes.single { it.isFailure }.exceptionOrNull())
+            val winner = inputs[outcomes.indexOfFirst { it.isSuccess }]
+            transaction(database) {
+                val saved = User.all().single()
+                assertEquals(winner.name, saved.name)
+                assertTrue(verifyPassword(winner.password, saved.password))
+                assertFalse(verifyPassword(inputs.single { it != winner }.password, saved.password))
+            }
+        }
+    }
+
     @Test
     fun `duplicate email does not create another user`() = runBlocking {
         MySQLContainer("mysql:8.1").use { mysql ->

@@ -4,6 +4,7 @@ import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.car.dto.UpdateCarDto
 import com.rentmycar.domain.car.DuplicateLicensePlateException
 import com.rentmycar.domain.car.CarHasRentalsException
+import com.rentmycar.domain.car.CarValidation
 import com.rentmycar.domain.car.ICarRepository
 import com.rentmycar.domain.auth.AuthorizationService
 import com.rentmycar.domain.car.cost.ConsumptionCostResponse
@@ -72,19 +73,11 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
                     return@post call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
                 }
                 val request = try {
-                    call.receive<CreateCarDto>()
+                    CarValidation.normalizeAndValidate(call.receive<CreateCarDto>())
                 } catch (_: BadRequestException) {
                     return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid JSON"))
-                }
-                val validationError = when {
-                    request.brand.isBlank() -> "Brand must not be blank"
-                    request.type.isBlank() -> "Type must not be blank"
-                    request.licensePlate.isBlank() -> "License plate must not be blank"
-                    request.pricePerHour.signum() <= 0 -> "Hourly rate must be greater than zero"
-                    else -> null
-                }
-                if (validationError != null) {
-                    return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to validationError))
+                } catch (exception: IllegalArgumentException) {
+                    return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to exception.message.orEmpty()))
                 }
                 try {
                     call.respond(HttpStatusCode.Created, repository.create(request, ownerId))
@@ -102,19 +95,11 @@ fun Route.carRoutes(repository: ICarRepository, rentalRepository: IRentalReposit
                     return@put call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
                 }
                 val request = try {
-                    call.receive<UpdateCarDto>()
+                    CarValidation.normalizeAndValidate(call.receive<UpdateCarDto>())
                 } catch (_: BadRequestException) {
                     return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid JSON"))
-                }
-                val validationError = when {
-                    request.brand?.isBlank() == true -> "Brand must not be blank"
-                    request.type?.isBlank() == true -> "Type must not be blank"
-                    request.licensePlate?.isBlank() == true -> "License plate must not be blank"
-                    request.pricePerHour != null && request.pricePerHour.signum() <= 0 -> "Hourly rate must be greater than zero"
-                    else -> null
-                }
-                if (validationError != null) {
-                    return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to validationError))
+                } catch (exception: IllegalArgumentException) {
+                    return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to exception.message.orEmpty()))
                 }
                 try {
                     val updated = repository.update(existing.id, request)

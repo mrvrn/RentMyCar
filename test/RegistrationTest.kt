@@ -71,6 +71,22 @@ class RegistrationTest {
     fun `rejects invalid email`() = checkRegistration(input = validUser.copy(email = "not-an-email"))
 
     @Test
+    fun `rejects invalid phone formatting`() {
+        for (phone in listOf("call me", "123456", "1".repeat(16), "++31612345678", "31(612345678")) {
+            checkRegistration(input = validUser.copy(phone = phone))
+        }
+    }
+
+    @Test
+    fun `accepts international phone formatting`() {
+        val input = validUser.copy(phone = "+31 (0)6 1234-5678")
+        checkRegistration(input = input, status = HttpStatusCode.OK, saved = input)
+    }
+
+    @Test
+    fun `rejects control characters in contact fields`() = checkRegistration(input = validUser.copy(name = "Test\u0000User"))
+
+    @Test
     fun `rejects short password`() = checkRegistration(input = validUser.copy(password = "short"))
 
     @Test

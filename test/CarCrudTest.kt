@@ -30,9 +30,15 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -40,6 +46,9 @@ import org.testcontainers.mysql.MySQLContainer
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.test.assertIs
+import com.rentmycar.domain.car.DuplicateLicensePlateException
 
 class CarCrudTest {
     private companion object {
@@ -119,9 +128,14 @@ class CarCrudTest {
         .sign(Algorithm.HMAC256(SECRET))
 
     @Test
-    fun `get cars returns ok`() = carTest {
+    fun getCarsReturnsOk() = carTest {
+        val created = postCar(carJson("LIST-01"))
+        assertEquals(HttpStatusCode.Created, created.status)
+        val expected = Json.parseToJsonElement(created.bodyAsText()).jsonObject
         val response = client.get("/cars")
         assertEquals(HttpStatusCode.OK, response.status)
+        val cars = Json.parseToJsonElement(response.bodyAsText()).jsonArray
+        assertEquals(expected, cars.single { it.jsonObject["id"] == expected["id"] }.jsonObject)
     }
 
     @Test
@@ -285,11 +299,120 @@ class CarCrudTest {
         assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"licensePlate":""}""").status)
         assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"pricePerHour":0}""").status)
         assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"dropOffId":999999}""").status)
+        assertEquals(HttpStatusCode.BadRequest, putCar(firstId, """{"brand":"Must roll back","dropOffId":999999}""").status)
         assertEquals(HttpStatusCode.Conflict, putCar(firstId, """{"licensePlate":"UPD-02"}""").status)
         assertEquals(HttpStatusCode.NotFound, putCar(999_999, """{"brand":"Audi"}""").status)
 
         val unchanged = Json.parseToJsonElement(client.get("/cars/$firstId").bodyAsText()).jsonObject
         assertEquals("UPD-01", unchanged["licensePlate"]!!.jsonPrimitive.content)
         assertEquals("10.00", unchanged["pricePerHour"]!!.jsonPrimitive.content)
+        assertEquals("Audi", unchanged["brand"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `plates are normalized and normalized duplicates are rejected`() = carTest {
+        val created = postCar(carJson("  norm-01  "))
+        assertEquals(HttpStatusCode.Created, created.status)
+        val body = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+        val id = body.getValue("id").jsonPrimitive.long
+        assertEquals("NORM-01", body.getValue("licensePlate").jsonPrimitive.content)
+        assertEquals(HttpStatusCode.Conflict, postCar(carJson(" norm-01 ")).status)
+        assertEquals(HttpStatusCode.Created, postCar(carJson("NORM-02")).status)
+        assertEquals(HttpStatusCode.Conflict, putCar(id, """{"licensePlate":" norm-02 "}""").status)
+        assertEquals(HttpStatusCode.OK, putCar(id, """{"licensePlate":" norm-01 "}""").status)
+        assertEquals(HttpStatusCode.OK, putCar(id, """{"licensePlate":" norm-03 "}""").status)
+        assertEquals("NORM-03", carRepository.findById(id)?.licensePlate)
+    }
+
+    @Test
+    fun `shared car validation returns bad request without altering stored data`() = carTest {
+        val input = CreateCarDto("Validation", "Car", "VALIDATE-01", "12.50".toBigDecimal(), pickupLocId, dropOffLocId)
+        val created = postCar(Json.encodeToString(input))
+        assertEquals(HttpStatusCode.Created, created.status)
+        val id = Json.parseToJsonElement(created.bodyAsText()).jsonObject.getValue("id").jsonPrimitive.long
+        val original = carRepository.findById(id)
+        val invalid = listOf(
+            input.copy(brand = "a".repeat(256)), input.copy(type = "a".repeat(256)),
+            input.copy(licensePlate = "A".repeat(256)), input.copy(licensePlate = "ß".repeat(128)),
+            input.copy(licensePlate = "INVALID/<plate>"), input.copy(brand = "Bad\u0000Brand"),
+            input.copy(pictures = List(21) { "https://example.com/car.png" }),
+            input.copy(pictures = listOf("https://example.com/".padEnd(2049, 'a'))),
+            input.copy(pictures = listOf("relative.png")), input.copy(pictures = listOf("javascript:alert(1)")),
+            input.copy(pictures = listOf("https://user:password@example.com/car.png")),
+            input.copy(pickupId = 0), input.copy(dropOffId = -1),
+        )
+        for (badInput in invalid) {
+            assertEquals(HttpStatusCode.BadRequest, postCar(Json.encodeToString(badInput)).status)
+            val update = UpdateCarDto(badInput.brand, badInput.type, badInput.licensePlate, badInput.pricePerHour,
+                badInput.pickupId, badInput.dropOffId, badInput.pictures, badInput.isAvailable)
+            assertEquals(HttpStatusCode.BadRequest, putCar(id, Json.encodeToString(update)).status)
+            assertEquals(original, carRepository.findById(id))
+        }
+        val boundary = input.copy(brand = "a".repeat(255), type = "b".repeat(255), licensePlate = "C".repeat(255),
+            pictures = List(20) { "https://example.com/".padEnd(2048, 'a') })
+        val boundaryResponse = postCar(Json.encodeToString(boundary))
+        assertEquals(HttpStatusCode.Created, boundaryResponse.status)
+        val boundaryId = Json.parseToJsonElement(boundaryResponse.bodyAsText()).jsonObject.getValue("id").jsonPrimitive.long
+        assertEquals(boundary.pictures, carRepository.findById(boundaryId)?.pictures)
+        assertEquals(255, carRepository.findById(boundaryId)?.licensePlate?.length)
+    }
+
+    @Test
+    fun `updates persist all editable fields and preserve omitted fields`() = carTest {
+        val created = postCar(carJson("FIELDS-01"))
+        assertEquals(HttpStatusCode.Created, created.status)
+        val id = Json.parseToJsonElement(created.bodyAsText()).jsonObject.getValue("id").jsonPrimitive.long
+        assertEquals(false, carRepository.findById(id)?.isAvailable)
+        val update = UpdateCarDto("Updated", "Estate", "FIELDS-02", "22.25".toBigDecimal(),
+            dropOffLocId, pickupLocId, listOf("https://example.com/updated.png"), true)
+        val response = putCar(id, Json.encodeToString(update))
+        assertEquals(HttpStatusCode.OK, response.status)
+        val saved = carRepository.findById(id)!!
+        assertEquals(testUserId, saved.ownerId)
+        assertEquals(update.brand, saved.brand)
+        assertEquals(update.type, saved.type)
+        assertEquals(update.licensePlate, saved.licensePlate)
+        assertEquals(update.pricePerHour, saved.pricePerHour)
+        assertEquals(update.pickupId, saved.pickupId)
+        assertEquals(update.dropOffId, saved.dropOffId)
+        assertEquals(update.pictures, saved.pictures)
+        assertTrue(saved.isAvailable)
+        assertEquals(HttpStatusCode.OK, putCar(id, "{}").status)
+        assertEquals(saved, carRepository.findById(id))
+        assertEquals(HttpStatusCode.OK, putCar(id, """{"pictures":[],"isAvailable":false}""").status)
+        assertEquals(saved.copy(pictures = emptyList(), isAvailable = false), carRepository.findById(id))
+    }
+
+    @Test
+    fun `price limits reject invalid create and update without changing stored data`() = carTest {
+        val created = postCar(carJson("LIMIT-01", pricePerHour = "99999999.99"))
+        assertEquals(HttpStatusCode.Created, created.status)
+        val id = Json.parseToJsonElement(created.bodyAsText()).jsonObject.getValue("id").jsonPrimitive.long
+        val original = carRepository.findById(id)
+        for (price in listOf("100000000", "1.001")) {
+            assertEquals(HttpStatusCode.BadRequest, postCar(carJson("LIMIT-BAD", pricePerHour = price)).status)
+            assertEquals(HttpStatusCode.BadRequest, putCar(id, """{"pricePerHour":$price}""").status)
+            assertEquals(original, carRepository.findById(id))
+        }
+        assertEquals(HttpStatusCode.OK, putCar(id, """{"pricePerHour":12.5000}""").status)
+        assertEquals("12.50".toBigDecimal(), carRepository.findById(id)?.pricePerHour)
+        assertEquals(HttpStatusCode.OK, putCar(id, """{"pricePerHour":99999999.99}""").status)
+        assertEquals(original, carRepository.findById(id))
+    }
+
+    @Test
+    fun `concurrent car creation stores one normalized plate`() = carTest {
+        val gate = CompletableDeferred<Unit>()
+        val input = CreateCarDto("Test", "Car", " race-01 ", "10.00".toBigDecimal(), pickupLocId, dropOffLocId)
+        val outcomes = coroutineScope {
+            val attempts = List(2) {
+                async(Dispatchers.IO) { gate.await(); runCatching { carRepository.create(input, testUserId) } }
+            }
+            gate.complete(Unit)
+            attempts.awaitAll()
+        }
+        assertEquals(1, outcomes.count { it.isSuccess })
+        assertIs<DuplicateLicensePlateException>(outcomes.single { it.isFailure }.exceptionOrNull())
+        assertEquals(1, carRepository.findAll().count { it.licensePlate == "RACE-01" })
     }
 }
