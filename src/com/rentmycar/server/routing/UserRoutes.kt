@@ -6,13 +6,13 @@ import com.rentmycar.domain.auth.AuthorizationService
 import com.rentmycar.domain.user.DuplicateEmailException
 import com.rentmycar.domain.user.IUserRepository
 import com.rentmycar.domain.user.UserRole
+import com.rentmycar.domain.user.UserValidation
 import com.rentmycar.domain.user.dto.LoginUserDto
 import com.rentmycar.domain.user.dto.CreateUserDto
 import com.rentmycar.domain.user.dto.RegisterUserRequest
+import com.rentmycar.server.auth.authenticatedUserId
+import com.rentmycar.server.auth.authorize
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.response.respond
@@ -28,36 +28,15 @@ fun Route.userRoutes(repository: IUserRepository) {
     val audience = jwtConfig
         .property("jwt.audience").getString()
 
-    authenticate("auth-jwt") {
-        route("/users") {
-            get("/{id}") {
-                val id = call.parameters["id"]?.toLongOrNull()
-
-                if (id == null) {
-                    call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
-                    return@get
-                }
-
-                val principal = call.principal<JWTPrincipal>()
-                val authenticatedUserId = principal
-                    ?.payload
-                    ?.getClaim("userId")
-                    ?.asLong()
-
-                if (authenticatedUserId != id) {
-                    call.respond(HttpStatusCode.Forbidden, "Access denied")
-                    return@get
-                }
-
-                val user = repository.findById(id)
-
-                if (user == null) {
-                    call.respond(HttpStatusCode.NotFound, "User not found")
-                    return@get
-                }
-
-                call.respond(user)
+    authorize(UserRole.RENTER) {
+        get("/users/{id}") {
+            val id = call.parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid user ID")
+            if (call.authenticatedUserId() != id) {
+                return@get call.respond(HttpStatusCode.Forbidden, "Access denied")
             }
+            val user = call.userOrRespond(repository) ?: return@get
+            call.respond(user)
         }
     }
 
@@ -68,45 +47,20 @@ fun Route.userRoutes(repository: IUserRepository) {
             } catch (_: BadRequestException) {
                 return@post call.respond(HttpStatusCode.BadRequest, "Invalid registration data")
             }
-            val user = input.copy(
-                name = input.name.trim(),
-                email = input.email.trim(),
-                phone = input.phone.trim(),
-                address = input.address.trim(),
-            )
-            val createUser = CreateUserDto(
-                name = user.name,
-                email = user.email,
-                phone = user.phone,
-                address = user.address,
-                password = user.password,
-            )
 
-            val error = when {
-                listOf(user.name, user.email, user.phone, user.address).any { it.isBlank() } ->
-                    "Name, email, phone and address are required"
-                listOf(user.name, user.email, user.phone, user.address).any { it.length > 100 } ->
-                    "Name, email, phone and address must be at most 100 characters"
-                !Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(user.email) ->
-                    "Invalid email address"
-                user.password.length < 8 || user.password.isBlank() ->
-                    "Password must contain at least 8 characters"
-                user.password.toByteArray(Charsets.UTF_8).size > 72 ->
-                    "Password must be at most 72 UTF-8 bytes"
-                else -> null
-            }
-
-            if (error != null) {
-                return@post call.respond(HttpStatusCode.BadRequest, error)
+            val createUser = try {
+                UserValidation.normalizeAndValidate(CreateUserDto(input.name, input.email, input.phone, input.address, input.password))
+            } catch (exception: IllegalArgumentException) {
+                return@post call.respond(HttpStatusCode.BadRequest, exception.message.orEmpty())
             }
 
             try {
                 // Self-registration always creates a renter; an owner role is never client-assignable.
                 repository.create(createUser, UserRole.RENTER)
             } catch (_: DuplicateEmailException) {
-                return@post call.respond(HttpStatusCode.Conflict, "Email is already registered")
+                // Send the same acknowledgement without changing the existing account.
             }
-            call.respond(HttpStatusCode.Created)
+            call.respond(HttpStatusCode.OK, "Registration request processed.")
         }
     }
 

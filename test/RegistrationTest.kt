@@ -14,6 +14,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.install
 import io.ktor.server.config.MapApplicationConfig
@@ -31,7 +32,7 @@ class RegistrationTest {
     )
 
     @Test
-    fun acceptsRegistrationWithoutJwtAndTrimsContactFields() {
+    fun `accepts registration without jwt and trims contact fields`() {
         val input = validUser.copy(
             name = " Test User ", email = " test@example.com ",
             phone = " 0612345678 ", address = " Test Street 1 ",
@@ -39,7 +40,7 @@ class RegistrationTest {
         )
         checkRegistration(
             input = input,
-            status = HttpStatusCode.Created,
+            status = HttpStatusCode.OK,
             saved = validUser.copy(password = input.password),
         )
     }
@@ -58,34 +59,50 @@ class RegistrationTest {
     fun rejectsMissingFields() = checkRegistration(body = "{}")
 
     @Test
-    fun rejectsMalformedJson() = checkRegistration(body = "{")
+    fun `rejects malformed json`() = checkRegistration(body = "{")
 
     @Test
-    fun rejectsBlankContactField() = checkRegistration(input = validUser.copy(name = "   "))
+    fun `rejects blank contact field`() = checkRegistration(input = validUser.copy(name = "   "))
 
     @Test
-    fun rejectsOversizedContactField() = checkRegistration(input = validUser.copy(address = "a".repeat(101)))
+    fun `rejects oversized contact field`() = checkRegistration(input = validUser.copy(address = "a".repeat(101)))
 
     @Test
-    fun rejectsInvalidEmail() = checkRegistration(input = validUser.copy(email = "not-an-email"))
+    fun `rejects invalid email`() = checkRegistration(input = validUser.copy(email = "not-an-email"))
 
     @Test
-    fun rejectsShortPassword() = checkRegistration(input = validUser.copy(password = "short"))
+    fun `rejects invalid phone formatting`() {
+        for (phone in listOf("call me", "123456", "1".repeat(16), "++31612345678", "31(612345678")) {
+            checkRegistration(input = validUser.copy(phone = phone))
+        }
+    }
 
     @Test
-    fun rejectsPasswordOverBcryptByteLimit() = checkRegistration(
+    fun `accepts international phone formatting`() {
+        val input = validUser.copy(phone = "+31 (0)6 1234-5678")
+        checkRegistration(input = input, status = HttpStatusCode.OK, saved = input)
+    }
+
+    @Test
+    fun `rejects control characters in contact fields`() = checkRegistration(input = validUser.copy(name = "Test\u0000User"))
+
+    @Test
+    fun `rejects short password`() = checkRegistration(input = validUser.copy(password = "short"))
+
+    @Test
+    fun `rejects password over bcrypt byte limit`() = checkRegistration(
         input = validUser.copy(password = "é".repeat(37))
     )
 
     @Test
-    fun acceptsPasswordAtBcryptByteLimit() {
+    fun `accepts password at bcrypt byte limit`() {
         val input = validUser.copy(password = "é".repeat(36))
-        checkRegistration(input = input, status = HttpStatusCode.Created, saved = input)
+        checkRegistration(input = input, status = HttpStatusCode.OK, saved = input)
     }
 
     @Test
-    fun duplicateEmailReturnsConflict() = checkRegistration(
-        status = HttpStatusCode.Conflict,
+    fun `duplicate email returns the same acknowledgement as new registration`() = checkRegistration(
+        status = HttpStatusCode.OK,
         duplicate = true,
         saved = validUser,
     )
@@ -119,7 +136,10 @@ class RegistrationTest {
         assertEquals(saved, repository.received)
         assertEquals(if (saved != null) UserRole.RENTER else null, repository.receivedRole)
         assertFalse(response.bodyAsText().contains(input.password))
-        if (duplicate) assertEquals("Email is already registered", response.bodyAsText())
+        if (status == HttpStatusCode.OK) {
+            assertEquals("Registration request processed.", response.bodyAsText())
+            assertEquals(ContentType.Text.Plain.withCharset(Charsets.UTF_8), response.contentType())
+        }
     }
 
     // Only creation is needed: registration must not require a user lookup or JWT.

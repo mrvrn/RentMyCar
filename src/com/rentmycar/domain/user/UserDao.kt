@@ -4,6 +4,8 @@ import com.rentmycar.domain.car.Car
 import com.rentmycar.domain.car.Cars
 import com.rentmycar.domain.location.Location
 import com.rentmycar.domain.location.Locations
+import com.rentmycar.domain.rental.Rental
+import com.rentmycar.domain.rental.Rentals
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.LongEntity
 import org.jetbrains.exposed.v1.dao.LongEntityClass
@@ -30,4 +32,5 @@ class User(id: EntityID<Long>) : LongEntity(id) {
 
     val cars by Car referrersOn Cars.ownerId // make sure to use val and referrersOn
     val locations by Location referrersOn Locations.userId
+    val rentals by Rental referrersOn Rentals.renterId
 }

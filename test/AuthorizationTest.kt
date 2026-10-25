@@ -12,7 +12,6 @@ import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.user.UserRole
 import com.rentmycar.domain.user.UserRepository
 import com.rentmycar.domain.user.dto.CreateUserDto
-import com.rentmycar.domain.user.dto.LoginUserDto
 import com.rentmycar.server.auth.authorize
 import com.rentmycar.server.auth.configureSecurity
 import com.rentmycar.server.routing.carRoutes
@@ -23,7 +22,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
 import io.ktor.server.config.MapApplicationConfig
@@ -36,7 +34,6 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.testcontainers.mysql.MySQLContainer
@@ -108,7 +105,7 @@ class AuthorizationTest {
             configureSecurity()
             routing {
                 userRoutes(repository)
-                carRoutes(carRepository)
+                carRoutes(carRepository, com.rentmycar.domain.rental.RentalRepository(), repository)
 
                 authenticate("auth-jwt") {
                     route("/owner-only") {
@@ -322,6 +319,23 @@ class AuthorizationTest {
         assertFalse(carRepository.contains(1))
     }
 
+    @Test
+    fun updateAndDeleteRejectMissingAndRenterTokensWithoutChangingCar() = authzTest {
+        for (method in listOf(io.ktor.http.HttpMethod.Put, io.ktor.http.HttpMethod.Delete)) {
+            for (renterToken in listOf(null, signedToken(renterId, "RENTER"))) {
+                val response = client.request("/cars/1") {
+                    this.method = method
+                    if (renterToken != null) bearerAuth(renterToken)
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"brand":"Unauthorized change"}""")
+                }
+                assertEquals(if (renterToken == null) HttpStatusCode.Unauthorized else HttpStatusCode.Forbidden, response.status)
+                assertTrue(carRepository.contains(1))
+                assertEquals("Test", carRepository.findById(1)?.brand)
+            }
+        }
+    }
+
     private fun carRequest(
         requestOwnerId: Long = ownerId,
         pickupId: Long = 1,
@@ -351,7 +365,7 @@ class AuthorizationTest {
             contentType(ContentType.Application.Json)
             setBody("""{"name":"Wannabe","email":"$email","phone":"0633333333","address":"Street 3","password":"password123"}""")
         }
-        assertEquals(HttpStatusCode.Created, register.status)
+        assertEquals(HttpStatusCode.OK, register.status)
 
         val loginResponse = client.post("/login") {
             contentType(ContentType.Application.Json)

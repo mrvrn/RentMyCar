@@ -14,18 +14,19 @@ class UserRepository : IUserRepository, BaseRepository<User, UserDto>(User) {
     // Delegate to the user mapper, which excludes the password from responses.
     override fun toDto(entity: User): UserDto = entity.toDto()
 
-    override suspend fun create(user: CreateUserDto, role: UserRole) {
+    override suspend fun create(user: CreateUserDto, userRole: UserRole) {
+        val validated = UserValidation.normalizeAndValidate(user)
         try {
-            val userPassword = PasswordService.hashPassword(user.password)
+            val userPassword = PasswordService.hashPassword(validated.password)
 
             withTransaction {
                 User.new {
-                    name = user.name
-                    email = user.email
-                    phone = user.phone
-                    address = user.address
+                    name = validated.name
+                    email = validated.email
+                    phone = validated.phone
+                    address = validated.address
                     password = userPassword
-                    this.role = role
+                    role = userRole
                 }
             }
         } catch (exception: SQLException) {

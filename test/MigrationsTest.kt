@@ -19,6 +19,51 @@ import kotlin.test.assertTrue
 
 class MigrationsTest {
     @Test
+    fun `rentals migrate after the existing main schema without losing car data`() = withDatabase { settings ->
+        val baseline = Flyway.configure()
+            .dataSource(settings.url, settings.user, settings.password)
+            .locations("classpath:db/migration")
+            .target("20261025010000000")
+            .load()
+            .migrate()
+        assertEquals(10, baseline.migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.metaData.getTables(connection.catalog, null, "rentals", arrayOf("TABLE")).use { rows ->
+                assertTrue(!rows.next())
+            }
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("INSERT INTO users (id, name, email, phone, address, password, role) VALUES (1, 'Owner', 'upgrade@example.com', '1', 'A', 'hash', 'OWNER')")
+                statement.executeUpdate("INSERT INTO locations (id, streetName, houseNumber, postalCode, city, country, userId) VALUES (1, 'Street', '1', '1234AB', 'City', 'NL', 1)")
+                statement.executeUpdate("INSERT INTO cars (id, ownerId, brand, type, licensePlate, pricePerHour, pickupId, dropOffId) VALUES (1, 1, 'Test', 'Test', 'UPGRADE-1', 19.99, 1, 1)")
+            }
+        }
+
+        assertEquals(1, migrateDatabase(settings).migrationsExecuted)
+        assertEquals(0, migrateDatabase(settings).migrationsExecuted)
+        DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT ownerId, licensePlate, pricePerHour FROM cars WHERE id = 1").use { rows ->
+                    assertTrue(rows.next())
+                    assertEquals(1L, rows.getLong("ownerId"))
+                    assertEquals("UPGRADE-1", rows.getString("licensePlate"))
+                    assertEquals("19.99".toBigDecimal(), rows.getBigDecimal("pricePerHour"))
+                }
+                statement.executeUpdate("INSERT INTO rentals (carId, renterId, startAt, endAt, status, totalPrice) VALUES (1, 1, '2100-11-01 10:00:00', '2100-11-01 11:00:00', 'PENDING', 19.99)")
+                statement.executeQuery("SELECT COUNT(*) FROM rentals").use { rows ->
+                    assertTrue(rows.next())
+                    assertEquals(1, rows.getInt(1))
+                }
+            }
+            val foreignKeys = mutableMapOf<String, String>()
+            connection.metaData.getImportedKeys(connection.catalog, null, "rentals").use { rows ->
+                while (rows.next()) foreignKeys[rows.getString("FKCOLUMN_NAME")] = rows.getString("PKTABLE_NAME")
+            }
+            assertEquals("cars", foreignKeys["carId"])
+            assertEquals("users", foreignKeys["renterId"])
+        }
+    }
+
+    @Test
     fun roleMigrationPreservesOwnersAndNormalizesLegacyValues() = withDatabase { settings ->
         Flyway.configure()
             .dataSource(settings.url, settings.user, settings.password)
@@ -35,7 +80,10 @@ class MigrationsTest {
             }
         }
 
-        assertEquals(6, migrateDatabase(settings).migrationsExecuted)
+        val pendingMigrations = kotlin.io.path.Path("resources", "db", "migration")
+            .listDirectoryEntries("V*__*.sql")
+            .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261013131505919" }
+        assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT role FROM users ORDER BY id").use { rows ->
@@ -159,7 +207,7 @@ class MigrationsTest {
     }
 
     @Test
-    fun committedMigrationsApplyOnceAndCreateForeignKeys() = withDatabase { settings ->
+    fun `committed migrations apply once and create foreign keys`() = withDatabase { settings ->
         val count = kotlin.io.path.Path("resources", "db", "migration")
             .listDirectoryEntries("V*__*.sql").size
         assertTrue(count > 0)
@@ -183,7 +231,7 @@ class MigrationsTest {
     }
 
     @Test
-    fun generationDoesNotApplySqlAndSubsequentChangesPreserveData() = withDatabase { settings ->
+    fun `generation does not apply sql and subsequent changes preserve data`() = withDatabase { settings ->
         val directory = createTempDirectory("rentmycar-migrations-")
         try {
             val database = settings.connect()

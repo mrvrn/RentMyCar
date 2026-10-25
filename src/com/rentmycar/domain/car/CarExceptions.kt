@@ -1,0 +1,5 @@
+package com.rentmycar.domain.car
+
+class DuplicateLicensePlateException(cause: Throwable) : RuntimeException("License plate is already in use", cause)
+
+class CarHasRentalsException(cause: Throwable) : RuntimeException("Car has associated rentals and cannot be deleted", cause)

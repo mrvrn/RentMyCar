@@ -1,6 +1,8 @@
 package com.rentmycar.domain.car
 
 import com.rentmycar.domain.location.Location
+import com.rentmycar.domain.rental.Rental
+import com.rentmycar.domain.rental.Rentals
 import com.rentmycar.domain.user.User
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.LongEntity
@@ -27,4 +29,6 @@ class Car(id: EntityID<Long>) : LongEntity(id) {
     var dropOff by Location referencedOn Cars.dropOffId
     var pictures by Cars.pictures
     var isAvailable by Cars.isAvailable
+
+    val rentals by Rental referrersOn Rentals.carId // make sure to use val and referrersOn
 }
