@@ -35,7 +35,7 @@ class MigrationsTest {
             }
         }
 
-        assertEquals(5, migrateDatabase(settings).migrationsExecuted)
+        assertEquals(6, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT role FROM users ORDER BY id").use { rows ->
@@ -69,7 +69,7 @@ class MigrationsTest {
             .listDirectoryEntries("V*__*.sql")
             .count { it.fileName.toString().removePrefix("V").substringBefore("__") > "20261013131505919" }
         assertEquals(pendingMigrations, migrateDatabase(settings).migrationsExecuted)
-        assertEquals(5, migrateDatabase(settings).migrationsExecuted)
+        assertEquals(0, migrateDatabase(settings).migrationsExecuted)
         DriverManager.getConnection(settings.url, settings.user, settings.password).use { connection ->
             connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT pricePerHour FROM cars WHERE id = 1").use { rows ->

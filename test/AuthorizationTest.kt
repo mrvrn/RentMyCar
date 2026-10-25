@@ -279,7 +279,7 @@ class AuthorizationTest {
             setBody(carRequest(requestOwnerId = renterId))
         }
         assertEquals(HttpStatusCode.Created, response.status, response.bodyAsText())
-        assertEquals(ownerId, carRepository.created.ownerId)
+        assertEquals(ownerId, carRepository.createdOwnerId)
     }
 
     @Test
@@ -328,7 +328,6 @@ class AuthorizationTest {
         dropOffId: Long = 1,
     ): String = Json.encodeToString(
         CreateCarDto(
-            ownerId = requestOwnerId,
             brand = "Test",
             type = "Hatchback",
             licensePlate = "AB-123-CD",
@@ -422,6 +421,8 @@ private class TestCarRepository : ICarRepository {
     private val cars = linkedMapOf<Long, CarDto>()
     lateinit var created: CreateCarDto
         private set
+    var createdOwnerId: Long? = null
+        private set
 
     fun reset(ownerId: Long, renterId: Long) {
         cars.clear()
@@ -439,13 +440,18 @@ private class TestCarRepository : ICarRepository {
 
     override suspend fun delete(id: Long): Boolean = cars.remove(id) != null
 
-    override suspend fun create(car: CreateCarDto) {
+    override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto {
         if (car.pickupId != 1L || car.dropOffId != 1L) {
-            throw com.rentmycar.domain.car.InvalidCarLocationException()
+            throw IllegalArgumentException("Invalid location")
         }
         created = car
-        cars[3] = carDto(3, car.ownerId)
+        createdOwnerId = ownerId
+        val result = carDto(3, ownerId)
+        cars[3] = result
+        return result
     }
+
+    override suspend fun update(id: Long, car: com.rentmycar.domain.car.dto.UpdateCarDto): CarDto? = null
 
     private fun carDto(id: Long, ownerId: Long) = CarDto(
         id = id,

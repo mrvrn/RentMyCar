@@ -110,6 +110,7 @@ class CarCrudTest {
         .withIssuer(ISSUER)
         .withAudience(AUDIENCE)
         .withClaim("userId", userId)
+        .withClaim("role", "OWNER")
         .withExpiresAt(Date(System.currentTimeMillis() + 60_000))
         .sign(Algorithm.HMAC256(SECRET))
 

@@ -7,7 +7,6 @@ import com.rentmycar.domain.car.dto.CreateCarDto
 import com.rentmycar.domain.car.dto.UpdateCarDto
 import com.rentmycar.domain.location.Location
 import com.rentmycar.domain.user.User
-import java.util.Locale
 import org.jetbrains.exposed.v1.core.eq
 import java.sql.SQLException
 import java.util.Locale
@@ -15,31 +14,11 @@ import java.util.Locale
 class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
     override fun toDto(entity: Car): CarDto = entity.toDto()
 
-<<<<<<< HEAD
-    override suspend fun create(car: CreateCarDto) {
-        withTransaction {
-            val pickupLocation = Location.findById(car.pickupId)
-                ?: throw InvalidCarLocationException()
-            val dropOffLocation = Location.findById(car.dropOffId)
-                ?: throw InvalidCarLocationException()
-
-            Car.new {
-                owner = User[car.ownerId]
-                brand = car.brand
-                type = car.type
-                licensePlate = car.licensePlate.trim().uppercase(Locale.ROOT)
-                pricePerHour = car.pricePerHour
-                pickup = pickupLocation
-                dropOff = dropOffLocation
-                pictures = car.pictures
-                isAvailable = car.isAvailable
-            }
-=======
     override suspend fun create(car: CreateCarDto, ownerId: Long): CarDto {
         try {
             return withTransaction {
-                val duplicate = Car.find { Cars.licensePlate eq car.licensePlate }.firstOrNull()
-                if (duplicate != null) {
+                val normalizedPlate = car.licensePlate.trim().uppercase(Locale.ROOT)
+                if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
                     throw DuplicateLicensePlateException(IllegalStateException("Dit kenteken is al in gebruik"))
                 }
 
@@ -50,19 +29,17 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                 val dropOffLocation = Location.findById(car.dropOffId)
                     ?: throw IllegalArgumentException("Inleverlocatie met ID ${car.dropOffId} bestaat niet")
 
-                val newCar = Car.new {
+                toDto(Car.new {
                     owner = ownerUser
                     brand = car.brand
                     type = car.type
-                    licensePlate = car.licensePlate.trim().uppercase(Locale.ROOT)
+                    licensePlate = normalizedPlate
                     pricePerHour = car.pricePerHour
                     pickup = pickupLocation
                     dropOff = dropOffLocation
                     pictures = car.pictures
                     isAvailable = car.isAvailable
-                }
-
-                toDto(newCar)
+                })
             }
         } catch (exception: SQLException) {
             if (generateSequence<Throwable>(exception) { it.cause }
@@ -81,30 +58,21 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
                 car.licensePlate?.let { newPlate ->
                     val normalizedPlate = newPlate.trim().uppercase(Locale.ROOT)
                     if (normalizedPlate != existing.licensePlate) {
-                        val dup = Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull()
-                        if (dup != null) {
+                        if (Car.find { Cars.licensePlate eq normalizedPlate }.firstOrNull() != null) {
                             throw DuplicateLicensePlateException(IllegalStateException("Dit kenteken is al in gebruik"))
                         }
                         existing.licensePlate = normalizedPlate
                     }
                 }
-
                 car.brand?.let { existing.brand = it }
                 car.type?.let { existing.type = it }
                 car.pricePerHour?.let { existing.pricePerHour = it }
-                car.pickupId?.let { locId ->
-                    val loc = Location.findById(locId)
-                        ?: throw IllegalArgumentException("Ophaallocatie met ID $locId bestaat niet")
-                    existing.pickup = loc
-                }
-                car.dropOffId?.let { locId ->
-                    val loc = Location.findById(locId)
-                        ?: throw IllegalArgumentException("Inleverlocatie met ID $locId bestaat niet")
-                    existing.dropOff = loc
-                }
+                car.pickupId?.let { existing.pickup = Location.findById(it)
+                    ?: throw IllegalArgumentException("Ophaallocatie met ID $it bestaat niet") }
+                car.dropOffId?.let { existing.dropOff = Location.findById(it)
+                    ?: throw IllegalArgumentException("Inleverlocatie met ID $it bestaat niet") }
                 car.pictures?.let { existing.pictures = it }
                 car.isAvailable?.let { existing.isAvailable = it }
-
                 toDto(existing)
             }
         } catch (exception: SQLException) {
@@ -116,5 +84,3 @@ class CarRepository : ICarRepository, BaseRepository<Car, CarDto>(Car) {
         }
     }
 }
-
-class InvalidCarLocationException : RuntimeException()
