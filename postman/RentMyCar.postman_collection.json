@@ -5979,12 +5979,14 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "{",
               "const data = pm.response.json();",
               "pm.test('Consumption cost response is complete', () => {",
               "  pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));",
               "  pm.expect(data.category).to.eql('ICE');",
               "  pm.expect(data.consumptionCostPerKm).to.be.a('number');",
-              "});"
+              "});",
+              "}"
             ]
           }
         }
@@ -6014,13 +6016,15 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "{",
               "const data = pm.response.json();",
               "pm.test('TCO response is complete', () => {",
               "  pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));",
               "  pm.expect(data.category).to.eql('ICE');",
               "  pm.expect(data.kmPerYear).to.eql(12000);",
               "  pm.expect(data.tco).to.be.a('number');",
-              "});"
+              "});",
+              "}"
             ]
           }
         }
