@@ -476,22 +476,26 @@ pm.test('Pictures and availability persisted', () => {
 });` });
 add('Calculate consumption cost as owner', managedUrl + '/consumption-cost', null, 200, {
   method: 'GET', auth: 'owner',
-  tests: `const data = pm.response.json();
+  tests: `{
+const data = pm.response.json();
 pm.test('Consumption cost response is complete', () => {
   pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));
   pm.expect(data.category).to.eql('ICE');
   pm.expect(data.consumptionCostPerKm).to.be.a('number');
-});`
+});
+}`
 });
 add('Calculate TCO as owner', managedUrl + '/tco?kmPerYear=12000', null, 200, {
   method: 'GET', auth: 'owner',
-  tests: `const data = pm.response.json();
+  tests: `{
+const data = pm.response.json();
 pm.test('TCO response is complete', () => {
   pm.expect(data.carId).to.eql(Number(pm.variables.get('managedCarId')));
   pm.expect(data.category).to.eql('ICE');
   pm.expect(data.kmPerYear).to.eql(12000);
   pm.expect(data.tco).to.be.a('number');
-});`
+});
+}`
 });
 for (const query of ['', '?kmPerYear=abc', '?kmPerYear=0', '?kmPerYear=-5']) {
   add(`Reject invalid TCO query ${query || 'missing'}`, managedUrl + '/tco' + query, null, 400, { method: 'GET', auth: 'owner' });
